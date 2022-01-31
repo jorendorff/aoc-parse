@@ -1,25 +1,25 @@
 use crate::matches::Match;
 use crate::{ParseError, Result};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Parser {
     parser_source: String,
     body: Box<ParserBody>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum ParserBody {
     /// Parser that matches only one string.
     Exact(String),
-    /// Match several patterns in sequence. Use `Seq([])` for the empty pattern.
-    Seq(Vec<Parser>),
-    /// Match any of several patterns. Use `Alt([])` for a parser that never matches.
-    Alt(Vec<Parser>),
+    /// Match several patterns in sequence. Use `Sequence([])` for the empty pattern.
+    Sequence(Vec<Parser>),
+    /// Match any of several patterns. Use `OneOf([])` for a parser that never matches.
+    OneOf(Vec<Parser>),
     /// Parse a repeating pattern.
     Repeat(Box<Repeat>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Repeat {
     pattern: Parser,
     min: usize,
@@ -89,16 +89,16 @@ impl ParseIter for EmptyParseIter {
     }
 }
 
-struct AltParseIter<'p> {
+struct OneOfParseIter<'p> {
     source: &'p str,
     start: usize,
     iter: Option<Box<dyn ParseIter + 'p>>,
     parsers: std::slice::Iter<'p, Parser>,
 }
 
-impl<'p> AltParseIter<'p> {
+impl<'p> OneOfParseIter<'p> {
     fn new(source: &'p str, start: usize, parsers: &'p [Parser]) -> Self {
-        AltParseIter {
+        OneOfParseIter {
             source,
             start,
             iter: None,
@@ -107,7 +107,7 @@ impl<'p> AltParseIter<'p> {
     }
 }
 
-impl<'p> ParseIter for AltParseIter<'p> {
+impl<'p> ParseIter for OneOfParseIter<'p> {
     fn next_parse(&mut self) -> Option<Result<usize>> {
         let mut foremost_error: Option<ParseError> = None;
         loop {
@@ -221,7 +221,7 @@ impl<'p> ParseIter for RepeatParseIter<'p> {
     }
 }
 
-struct SeqParseIter<'p> {
+struct SequenceParseIter<'p> {
     is_at_start: bool,
     source: &'p str,
     start: usize,
@@ -229,9 +229,9 @@ struct SeqParseIter<'p> {
     iters: Vec<Box<dyn ParseIter + 'p>>,
 }
 
-impl<'p> SeqParseIter<'p> {
+impl<'p> SequenceParseIter<'p> {
     fn new(source: &'p str, start: usize, parsers: &'p [Parser]) -> Self {
-        SeqParseIter {
+        SequenceParseIter {
             is_at_start: true,
             source,
             start,
@@ -241,7 +241,7 @@ impl<'p> SeqParseIter<'p> {
     }
 }
 
-impl<'p> ParseIter for SeqParseIter<'p> {
+impl<'p> ParseIter for SequenceParseIter<'p> {
     fn next_parse(&mut self) -> Option<Result<usize>> {
         let mut foremost_error: Option<ParseError> = None;
         let mut pump_existing_iter = !self.is_at_start;
@@ -312,8 +312,8 @@ impl Parser {
                     })
                 }
             }
-            ParserBody::Seq(parsers) => Box::new(SeqParseIter::new(s, start, parsers)),
-            ParserBody::Alt(arms) => Box::new(AltParseIter::new(s, start, arms)),
+            ParserBody::Sequence(parsers) => Box::new(SequenceParseIter::new(s, start, parsers)),
+            ParserBody::OneOf(arms) => Box::new(OneOfParseIter::new(s, start, arms)),
             ParserBody::Repeat(rep) => Box::new(RepeatParseIter::new(s, start, rep)),
         }
     }
@@ -335,10 +335,16 @@ impl Parser {
             panic!("parse iterator broke the contract: no matches and no error");
         }
     }
+
+    #[doc(hidden)]
+    pub fn with_source(mut self, parser_source: &'static str) -> Self {
+        self.parser_source = parser_source.to_string();
+        self
+    }
 }
 
 pub fn empty() -> Parser {
-    seq([])
+    sequence([])
 }
 
 pub fn exact(s: &str) -> Parser {
@@ -348,7 +354,7 @@ pub fn exact(s: &str) -> Parser {
     }
 }
 
-pub fn seq(parsers: impl IntoIterator<Item = Parser>) -> Parser {
+pub fn sequence(parsers: impl IntoIterator<Item = Parser>) -> Parser {
     let parsers = parsers.into_iter().collect::<Vec<Parser>>();
     let parser_source = parsers
         .iter()
@@ -357,11 +363,11 @@ pub fn seq(parsers: impl IntoIterator<Item = Parser>) -> Parser {
         .join(" ");
     Parser {
         parser_source,
-        body: Box::new(ParserBody::Seq(parsers)),
+        body: Box::new(ParserBody::Sequence(parsers)),
     }
 }
 
-pub fn alt(parsers: impl IntoIterator<Item = Parser>) -> Parser {
+pub fn one_of(parsers: impl IntoIterator<Item = Parser>) -> Parser {
     let parsers = parsers.into_iter().collect::<Vec<Parser>>();
     let parser_source = "{\n".to_string()
         + &parsers
@@ -372,7 +378,7 @@ pub fn alt(parsers: impl IntoIterator<Item = Parser>) -> Parser {
         + "}\n";
     Parser {
         parser_source,
-        body: Box::new(ParserBody::Alt(parsers)),
+        body: Box::new(ParserBody::OneOf(parsers)),
     }
 }
 
@@ -394,6 +400,10 @@ pub fn repeat(
             sep_is_terminator,
         }))),
     }
+}
+
+pub fn opt(pattern: Parser) -> Parser {
+    one_of([pattern, empty()])
 }
 
 // Kleene *
@@ -461,13 +471,13 @@ mod tests {
         assert_no_parse(&p, "o");
         assert_no_parse(&p, "nok");
 
-        let p = seq([exact("ok"), exact("go")]);
+        let p = sequence([exact("ok"), exact("go")]);
         assert_parse(&p, "okgo");
         assert_no_parse(&p, "ok");
         assert_no_parse(&p, "go");
         assert_no_parse(&p, "");
 
-        let p = alt([empty(), exact("ok")]);
+        let p = one_of([empty(), exact("ok")]);
         assert_parse(&p, "");
         assert_parse(&p, "ok");
         assert_no_parse(&p, "okc");
