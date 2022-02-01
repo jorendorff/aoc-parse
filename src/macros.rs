@@ -2,6 +2,7 @@ use crate::matches::Match;
 use crate::parser::{self, Parser};
 use crate::ParseError;
 
+#[non_exhaustive]
 pub enum ParserExpr {
     StringLiteral(&'static str),
     Map(
