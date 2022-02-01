@@ -179,7 +179,7 @@ macro_rules! parser {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $($exprs ,)* $crate::parser!(@seq [ ] $( $seq )*) ]
+            [ $( $exprs , )* $crate::parser!(@seq [ ] $( $seq )*) , ]
         )
     };
     (@list [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] [ $($exprs:expr ,)* ]) => {
