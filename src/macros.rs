@@ -171,7 +171,7 @@ macro_rules! parser {
         $crate::parser!(@seq [ ] $($nested)*)
     };
     (@prim { $($nested:tt)* }) => {
-        $crate::macros::one_of($crate::parser!(@list [$($nested)*] [] []))
+        $crate::macros::one_of($crate::parser!(@list [ $( $nested )* ] [] []))
     };
 
     (@list [ , $($tail:tt)* ] [ $($seq:tt)* ] [ $($exprs:expr ,)* ]) => {
@@ -186,7 +186,7 @@ macro_rules! parser {
         $crate::parser!(
             @list
             [ $( $tail )* ]
-            [ $( $seq )* next ]
+            [ $( $seq )* $next ]
             [ $( $exprs , )* ]
         )
     };
