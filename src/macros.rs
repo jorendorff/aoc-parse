@@ -11,12 +11,12 @@ pub enum ParserExpr {
     ),
     Label(String, Box<ParserExpr>),
     Sequence(Vec<ParserExpr>),
+    OneOf(Vec<ParserExpr>),
     Star(Box<ParserExpr>),
     Plus(Box<ParserExpr>),
     Optional(Box<ParserExpr>),
     Identifier(String),
     Call(String, Vec<ParserExpr>),
-    OneOf(Vec<ParserExpr>),
 }
 
 impl ParserExpr {
@@ -31,17 +31,32 @@ impl ParserExpr {
                     .map(ParserExpr::evaluate)
                     .collect::<Vec<Parser>>(),
             ),
-            ParserExpr::Star(expr) => parser::star((*expr).evaluate()),
-            ParserExpr::Plus(expr) => parser::plus((*expr).evaluate()),
-            ParserExpr::Optional(expr) => parser::opt((*expr).evaluate()),
-            ParserExpr::Identifier(_name) => todo!("named parser support"),
-            ParserExpr::Call(_name, _arguments) => todo!("function call syntax"),
             ParserExpr::OneOf(parsers) => parser::one_of(
                 parsers
                     .into_iter()
                     .map(ParserExpr::evaluate)
                     .collect::<Vec<Parser>>(),
             ),
+            ParserExpr::Star(expr) => parser::star((*expr).evaluate()),
+            ParserExpr::Plus(expr) => parser::plus((*expr).evaluate()),
+            ParserExpr::Optional(expr) => parser::opt((*expr).evaluate()),
+            ParserExpr::Identifier(_name) => todo!("named parser support"),
+            ParserExpr::Call(name, mut arguments) => match &name as &str {
+                "lines" => {
+                    if arguments.len() != 1 {
+                        panic!("lines() takes 1 argument, got {}", arguments.len());
+                    }
+                    parser::repeat(
+                        "".to_string(),
+                        arguments.pop().unwrap().evaluate(),
+                        parser::exact("\n"),
+                        0,
+                        None,
+                        true,
+                    )
+                }
+                _ => todo!("unexpected function `{}`", name),
+            },
         }
     }
 }
@@ -64,6 +79,10 @@ pub fn star(expr: ParserExpr) -> ParserExpr {
 
 pub fn identifier(ident: &'static str) -> ParserExpr {
     ParserExpr::Identifier(ident.to_string())
+}
+
+pub fn call(ident: &'static str, arguments: Vec<ParserExpr>) -> ParserExpr {
+    ParserExpr::Call(ident.to_string(), arguments)
 }
 
 /// ```text
