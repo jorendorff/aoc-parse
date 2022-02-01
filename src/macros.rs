@@ -151,7 +151,7 @@ macro_rules! parser {
         $crate::macros::sequence($crate::parser!(@reverse [ $($parts ,)* ] []))
     };
     (@seq [ $($parts:expr ,)* ] $($tail:tt)*) => {
-        error!("unrecognized syntax {}", stringify!($($tail)*))
+        ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
     (@reverse [ ] [ $($exprs:expr ,)* ]) => {
@@ -198,7 +198,7 @@ macro_rules! parser {
     };
 
     (@ $($tail:tt)*) => {
-        error!("unrecognized syntax {}", stringify!($($tail)*))
+        ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
     (rule $name:ident = $($body:tt)* ; $($tail:tt)*) => {
