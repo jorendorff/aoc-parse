@@ -58,40 +58,40 @@ pub use crate::parser::{either, empty, exact, lines, opt, plus, sequence, star};
 /// ```
 #[macro_export]
 macro_rules! parser {
-    (@seq [ $($stack:tt)* ] [ => $mapper:expr ]) => {
+    (@seq [ => $mapper:expr ] [ $($stack:tt)* ]) => {
         todo!("map syntax")
     };
-    (@seq [ $top:expr , $($stack:expr ,)* ] [ as $ty:ty ]) => {
+    (@seq [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ]) => {
         todo!("cast syntax")
     };
-    (@seq [ $top:expr , $($stack:expr ,)* ] [ * $($tail:tt)* ]) => {
-        $crate::parser!(@seq [ $crate::macros::star($top) , $($stack ,)* ] [ $($tail)* ])
+    (@seq [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ]) => {
+        $crate::parser!(@seq [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ])
     };
-    (@seq [ $top:expr , $($stack:expr ,)* ] [ + $($tail:tt)* ]) => {
-        $crate::parser!(@seq [ $crate::macros::plus($top) , $($stack ,)* ] [ $($tail)* ])
+    (@seq [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ]) => {
+        $crate::parser!(@seq [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ])
     };
-    (@seq [ $top:expr , $($stack:tt)* ] [ ? $($tail:tt)* ]) => {
-        $crate::parser!(@seq [ $crate::macros::opt($top) , $($stack)* ] [ $($tail)* ])
+    (@seq [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ]) => {
+        $crate::parser!(@seq [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ])
     };
     // call syntax
-    (@seq [ $($stack:expr ,)* ] [ $f:ident ( $($args:tt)* ) $($tail:tt)* ]) => {
+    (@seq [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ]) => {
         $crate::parser!(
             @seq
+            [ $($tail)* ]
             [
                 $f ($crate::parser!(@list [$($args)*] [] []))
                 ,
                 $($stack ,)*
             ]
-            [ $($tail)* ]
         )
     };
-    (@seq [ $($stack:expr ,)* ] [ $x:tt $($tail:tt)* ]) => {
-        $crate::parser!(@seq [ $crate::parser!(@prim $x) , $($stack ,)* ] [ $($tail)* ])
+    (@seq [ $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ]) => {
+        $crate::parser!(@seq [ $($tail)* ] [ $crate::parser!(@prim $x) , $($stack ,)* ])
     };
-    (@seq [ $($parts:expr ,)* ] [ /* end of input */ ]) => {
+    (@seq [ /* end of input */ ] [ $($parts:expr ,)* ]) => {
         $crate::parser!(@reverse [ $($parts ,)* ] [ $crate::macros::empty() ])
     };
-    (@seq [ $($parts:expr ,)* ] [ $($tail:tt)* ]) => {
+    (@seq [ $($tail:tt)* ] [ $($parts:expr ,)* ]) => {
         ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
@@ -109,7 +109,7 @@ macro_rules! parser {
         $crate::macros::exact($x)
     };
     (@prim ( $($nested:tt)* )) => {
-        $crate::parser!(@seq [ ] [ $($nested)* ])
+        $crate::parser!(@seq [ $($nested)* ] [ ])
     };
     (@prim { $($nested:tt)* }) => {
         $crate::parser!(@list [ $( $nested )* ] [] [])
@@ -121,7 +121,7 @@ macro_rules! parser {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $crate::parser!(@seq [ ] [ $( $seq )* ]) ]
+            [ $crate::parser!(@seq [ $( $seq )* ] [ ]) ]
         )
     };
     (@list [ , $($tail:tt)* ] [ $($seq:tt)* ] [ $out:expr ]) => {
@@ -130,7 +130,7 @@ macro_rules! parser {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $crate::macros::either($out, $crate::parser!(@seq [ ] [ $( $seq )* ])) ]
+            [ $crate::macros::either($out, $crate::parser!(@seq [ $( $seq )* ] [ ])) ]
         )
     };
     (@list [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] [ $($out:expr)? ]) => {
@@ -166,6 +166,6 @@ macro_rules! parser {
         todo!("label syntax")
     };
     ($($tail:tt)*) => {
-        $crate::parser!(@seq [ ] [ $($tail)* ])
+        $crate::parser!(@seq [ $($tail)* ] [ ])
     };
 }
