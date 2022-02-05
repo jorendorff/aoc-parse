@@ -1,324 +1,12 @@
-use crate::matches::Match;
 use crate::{ParseError, Result};
 
-#[derive(Clone, Debug)]
-pub struct Parser {
-    parser_source: String,
-    body: Box<ParserBody>,
-}
+pub trait Parser<'parse, 'source> {
+    type Output;
+    type Iter: ParseIter<Output = Self::Output>;
 
-#[derive(Clone, Debug)]
-enum ParserBody {
-    /// Parser that matches only one string.
-    Exact(String),
-    /// Match several patterns in sequence. Use `Sequence([])` for the empty pattern.
-    Sequence(Vec<Parser>),
-    /// Match any of several patterns. Use `OneOf([])` for a parser that never matches.
-    OneOf(Vec<Parser>),
-    /// Parse a repeating pattern.
-    Repeat(Box<Repeat>),
-}
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter;
 
-#[derive(Clone, Debug)]
-struct Repeat {
-    pattern: Parser,
-    min: usize,
-    max: Option<usize>,
-    sep: Parser,
-    sep_is_terminator: bool,
-}
-
-impl Repeat {
-    fn check_repeat_count(&self, count: usize) -> bool {
-        let even_matches = count / 2;
-        let expected_parity = !self.sep_is_terminator as usize;
-        (count == 0 || count % 2 == expected_parity)
-            && self.min <= even_matches
-            && match self.max {
-                None => true,
-                Some(max) => even_matches <= max,
-            }
-    }
-}
-
-/// A parser in action. Some parsers can match in several different ways (for
-/// example, in `foo* bar` backtracking is accomplished by `foo*` first
-/// matching as much as possible, then backing off one match at a time), so
-/// this is an iterator.
-///
-/// This doesn't return data from `next_parse` but instead waits until you're
-/// sure you have a complete, successful parse, and are thus ready to destroy
-/// the iterator. This is necessary because of Rust's ownership model; if we
-/// returned the results every time we'd have to do O(n^2) cloning of long
-/// vectors when backtracking. (Backtracking probably has terrible performance
-/// anyway.)
-trait ParseIter {
-    fn next_parse(&mut self) -> Option<Result<usize>>;
-
-    /// Consume this iterator to extract data. This would take `self` by value,
-    /// except that's not compatible with trait objects.
-    fn take_data(&mut self) -> Match;
-}
-
-struct OnceParseIter {
-    location: Option<usize>,
-    result: Option<Match>,
-}
-
-impl ParseIter for OnceParseIter {
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        self.location.take().map(|loc| Ok(loc))
-    }
-
-    fn take_data(&mut self) -> Match {
-        self.result.take().unwrap()
-    }
-}
-
-struct EmptyParseIter {
-    error: ParseError,
-}
-
-impl ParseIter for EmptyParseIter {
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        Some(Err(self.error.clone()))
-    }
-
-    fn take_data(&mut self) -> Match {
-        panic!("can't happen")
-    }
-}
-
-struct OneOfParseIter<'p> {
-    source: &'p str,
-    start: usize,
-    iter: Option<Box<dyn ParseIter + 'p>>,
-    parsers: std::slice::Iter<'p, Parser>,
-}
-
-impl<'p> OneOfParseIter<'p> {
-    fn new(source: &'p str, start: usize, parsers: &'p [Parser]) -> Self {
-        OneOfParseIter {
-            source,
-            start,
-            iter: None,
-            parsers: parsers.iter(),
-        }
-    }
-}
-
-impl<'p> ParseIter for OneOfParseIter<'p> {
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        let mut foremost_error: Option<ParseError> = None;
-        loop {
-            if let Some(iter) = self.iter.as_mut() {
-                match iter.next_parse() {
-                    None => self.iter = None,
-                    Some(Err(err)) => {
-                        if Some(err.location) > foremost_error.as_ref().map(|err| err.location) {
-                            foremost_error = Some(err);
-                        }
-                        self.iter = None
-                    }
-                    Some(Ok(end)) => return Some(Ok(end)),
-                }
-            } else if let Some(next_parser) = self.parsers.next() {
-                self.iter = Some(next_parser.parse_iter(self.source, self.start));
-            } else {
-                return foremost_error.map(Err);
-            }
-        }
-    }
-
-    fn take_data(&mut self) -> Match {
-        self.iter.take().unwrap().take_data()
-    }
-}
-
-struct RepeatParseIter<'p> {
-    source: &'p str,
-    params: &'p Repeat,
-    iters: Vec<Box<dyn ParseIter + 'p>>,
-    starts: Vec<usize>,
-}
-
-impl<'p> RepeatParseIter<'p> {
-    fn new(source: &'p str, start: usize, params: &'p Repeat) -> Self {
-        RepeatParseIter {
-            source,
-            params,
-            iters: vec![params.pattern.parse_iter(source, start)],
-            starts: vec![start],
-        }
-    }
-}
-
-impl<'p> ParseIter for RepeatParseIter<'p> {
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        // TODO: When considering creating a new iterator, if we have already
-        // matched `max` times, don't bother; no matches can come of it.
-        let mut foremost_error: Option<ParseError> = None;
-        let mut got_iter = true;
-        loop {
-            if got_iter {
-                let last_iter = if let Some(iter) = self.iters.last_mut() {
-                    iter
-                } else {
-                    // No more iterators. We exhausted all possibilities.
-                    return foremost_error.map(Err);
-                };
-
-                // Get the next match.
-                match last_iter.next_parse() {
-                    None => {
-                        got_iter = false;
-                    }
-                    Some(Err(err)) => {
-                        got_iter = false;
-                        if Some(err.location) > foremost_error.as_ref().map(|err| err.location) {
-                            foremost_error = Some(err);
-                        }
-                    }
-                    Some(Ok(point)) => {
-                        // Got a match! But don't return it to the user yet.
-                        // Repeats are "greedy"; we press on to see if we can
-                        // match again! If we just matched `pattern`, try
-                        // `sep`; if we just matched `sep`, try `pattern`.
-                        self.starts.push(point);
-                        let next_pat = if self.iters.len() % 2 == 0 {
-                            &self.params.pattern
-                        } else {
-                            &self.params.sep
-                        };
-                        self.iters.push(next_pat.parse_iter(self.source, point));
-                    }
-                }
-            } else {
-                // The current top-of-stack iterators is exhausted and needs to be discarded.
-                self.iters.pop();
-                let end = self.starts.pop().unwrap();
-                got_iter = true;
-
-                // Repeats are "greedy", so we need to yield the longest match
-                // first. This means returning only "on the way out" (a
-                // postorder walk of the tree of possible parses).
-                if self.params.check_repeat_count(self.iters.len()) {
-                    return Some(Ok(end));
-                }
-            }
-        }
-    }
-
-    fn take_data(&mut self) -> Match {
-        Match::Array(
-            self.iters
-                .split_off(0)
-                .into_iter()
-                .step_by(2)
-                .map(|mut iter| iter.take_data())
-                .collect(),
-        )
-    }
-}
-
-struct SequenceParseIter<'p> {
-    is_at_start: bool,
-    source: &'p str,
-    start: usize,
-    parsers: &'p [Parser],
-    iters: Vec<Box<dyn ParseIter + 'p>>,
-}
-
-impl<'p> SequenceParseIter<'p> {
-    fn new(source: &'p str, start: usize, parsers: &'p [Parser]) -> Self {
-        SequenceParseIter {
-            is_at_start: true,
-            source,
-            start,
-            parsers,
-            iters: vec![],
-        }
-    }
-}
-
-impl<'p> ParseIter for SequenceParseIter<'p> {
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        let mut foremost_error: Option<ParseError> = None;
-        let mut pump_existing_iter = !self.is_at_start;
-        self.is_at_start = false;
-        let mut position = self.start;
-        loop {
-            if pump_existing_iter {
-                if let Some(iter) = self.iters.last_mut() {
-                    match iter.next_parse() {
-                        None => {
-                            self.iters.pop();
-                        }
-                        Some(Err(err)) => {
-                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
-                            {
-                                foremost_error = Some(err);
-                            }
-                            self.iters.pop();
-                        }
-                        Some(Ok(end)) => {
-                            position = end;
-                            pump_existing_iter = false;
-                        }
-                    }
-                } else {
-                    // iters is empty. Failure.
-                    return foremost_error.map(|err| Err(err));
-                }
-            } else if self.iters.len() < self.parsers.len() {
-                let i = self.iters.len();
-                let iter = self.parsers[i].parse_iter(self.source, position);
-                self.iters.push(iter);
-                pump_existing_iter = true;
-            } else {
-                // We have a complete set of matches.
-                return Some(Ok(position));
-            }
-        }
-    }
-
-    fn take_data(&mut self) -> Match {
-        Match::Tuple(
-            self.iters
-                .split_off(0)
-                .into_iter()
-                .map(|mut iter| iter.take_data())
-                .collect(),
-        )
-    }
-}
-
-impl Parser {
-    pub fn can_parse<T>(&self) -> Result<()> {
-        todo!();
-    }
-
-    fn parse_iter<'p>(&'p self, s: &'p str, start: usize) -> Box<dyn ParseIter + 'p> {
-        match &*self.body {
-            ParserBody::Exact(expected) => {
-                if s[start..].starts_with(expected) {
-                    Box::new(OnceParseIter {
-                        location: Some(start + expected.len()),
-                        result: Some(Match::Exact(expected.clone())),
-                    })
-                } else {
-                    Box::new(EmptyParseIter {
-                        error: ParseError::new_expected(s, start, expected),
-                    })
-                }
-            }
-            ParserBody::Sequence(parsers) => Box::new(SequenceParseIter::new(s, start, parsers)),
-            ParserBody::OneOf(arms) => Box::new(OneOfParseIter::new(s, start, arms)),
-            ParserBody::Repeat(rep) => Box::new(RepeatParseIter::new(s, start, rep)),
-        }
-    }
-
-    pub fn parse(&self, s: &str) -> Result<Match> {
+    fn parse(&'parse self, s: &'source str) -> Result<Self::Output> {
         let mut it = self.parse_iter(s, 0);
         let mut best_end: Option<usize> = None;
         while let Some(parse) = it.next_parse() {
@@ -336,124 +24,625 @@ impl Parser {
         }
     }
 
-    #[doc(hidden)]
-    pub fn with_source(mut self, parser_source: &'static str) -> Self {
-        self.parser_source = parser_source.to_string();
-        self
+    fn map<T, F>(self, mapper: F) -> MapParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::Output) -> T,
+    {
+        MapParser {
+            parser: self,
+            mapper,
+        }
     }
 }
 
-pub fn empty() -> Parser {
-    sequence([])
+/// A parser in action. Some parsers can match in several different ways (for
+/// example, in `foo* bar` backtracking is accomplished by `foo*` first
+/// matching as much as possible, then backing off one match at a time), so
+/// this is an iterator.
+///
+/// This doesn't return data from `next_parse` but instead waits until you're
+/// sure you have a complete, successful parse, and are thus ready to destroy
+/// the iterator. This is necessary because of Rust's ownership model; if we
+/// returned the results every time we'd have to do O(n^2) cloning of long
+/// vectors when backtracking. (Backtracking probably has terrible performance
+/// anyway.)
+pub trait ParseIter {
+    type Output;
+
+    fn next_parse(&mut self) -> Option<Result<usize>>;
+
+    /// Consume this iterator to extract data. This would take `self` by value,
+    /// except that's not compatible with trait objects.
+    fn take_data(&mut self) -> Self::Output;
 }
 
-pub fn exact(s: &str) -> Parser {
-    Parser {
-        parser_source: format!("{:?}", s),
-        body: Box::new(ParserBody::Exact(s.to_string())),
+// --- Parser that successfully matches the empty string
+
+pub struct EmptyParser;
+
+impl<'parse, 'source> Parser<'parse, 'source> for EmptyParser {
+    type Output = ();
+    type Iter = EmptyParseIter;
+
+    fn parse_iter(&'parse self, _source: &'source str, start: usize) -> EmptyParseIter {
+        EmptyParseIter {
+            used: false,
+            location: start,
+        }
     }
 }
 
-pub fn sequence(parsers: impl IntoIterator<Item = Parser>) -> Parser {
-    let parsers = parsers.into_iter().collect::<Vec<Parser>>();
-    let parser_source = parsers
-        .iter()
-        .map(|p| &p.parser_source as &str)
-        .collect::<Vec<&str>>()
-        .join(" ");
-    Parser {
-        parser_source,
-        body: Box::new(ParserBody::Sequence(parsers)),
+pub struct EmptyParseIter {
+    used: bool,
+    location: usize,
+}
+
+impl ParseIter for EmptyParseIter {
+    type Output = ();
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        if self.used {
+            None
+        } else {
+            self.used = true;
+            Some(Ok(self.location))
+        }
+    }
+
+    fn take_data(&mut self) {}
+}
+
+// --- Parser that never matches anything
+
+#[derive(Debug)]
+pub enum Never {}
+
+pub struct NeverParser;
+
+pub struct NeverParseIter<'source> {
+    source: &'source str,
+    start: usize,
+}
+
+impl<'parse, 'source> Parser<'parse, 'source> for NeverParser {
+    type Output = Never;
+    type Iter = NeverParseIter<'source>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> NeverParseIter<'source> {
+        NeverParseIter { source, start }
     }
 }
 
-pub fn one_of(parsers: impl IntoIterator<Item = Parser>) -> Parser {
-    let parsers = parsers.into_iter().collect::<Vec<Parser>>();
-    let parser_source = "{\n".to_string()
-        + &parsers
-            .iter()
-            .map(|p| p.parser_source.clone() + ",\n")
-            .collect::<Vec<String>>()
-            .join("")
-        + "}\n";
-    Parser {
-        parser_source,
-        body: Box::new(ParserBody::OneOf(parsers)),
+impl<'source> ParseIter for NeverParseIter<'source> {
+    type Output = Never;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        Some(Err(ParseError::new_cannot_match(self.source, self.start)))
+    }
+
+    fn take_data(&mut self) -> Never {
+        unreachable!("never matches");
     }
 }
 
-pub fn repeat(
-    parser_source: String,
-    pattern: Parser,
-    sep: Parser,
+// --- Parser that matches a particular exact string
+
+pub struct ExactParser {
+    s: String,
+}
+
+pub struct ExactParseIter<'parse, 'source> {
+    expected: &'parse str,
+    input: &'source str,
+    start: usize,
+    done: bool,
+}
+
+impl<'parse, 'source> Parser<'parse, 'source> for ExactParser {
+    type Output = ();
+    type Iter = ExactParseIter<'parse, 'source>;
+
+    fn parse_iter(
+        &'parse self,
+        source: &'source str,
+        start: usize,
+    ) -> ExactParseIter<'parse, 'source> {
+        ExactParseIter {
+            expected: &self.s,
+            input: source,
+            start,
+            done: false,
+        }
+    }
+}
+
+impl<'parse, 'source> ParseIter for ExactParseIter<'parse, 'source> {
+    type Output = ();
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        if self.done {
+            None
+        } else if self.input[self.start..].starts_with(self.expected) {
+            self.done = true;
+            Some(Ok(self.start + self.expected.len()))
+        } else {
+            Some(Err(ParseError::new_expected(
+                self.input,
+                self.start,
+                self.expected,
+            )))
+        }
+    }
+
+    fn take_data(&mut self) {}
+}
+
+// --- Matching patterns in sequence
+
+pub struct SequenceParser<Head, Tail> {
+    head: Head,
+    tail: Tail,
+}
+
+pub struct SequenceParseIter<'parse, 'source, Head, Tail>
+where
+    Head: Parser<'parse, 'source>,
+    Tail: Parser<'parse, 'source>,
+{
+    parsers: &'parse SequenceParser<Head, Tail>,
+    is_at_start: bool,
+    source: &'source str,
+    start: usize,
+    head_iter: Option<Head::Iter>,
+    tail_iter: Option<Tail::Iter>,
+}
+
+impl<'parse, 'source, Head, Tail> Parser<'parse, 'source> for SequenceParser<Head, Tail>
+where
+    Head: Parser<'parse, 'source> + 'parse,
+    Tail: Parser<'parse, 'source> + 'parse,
+{
+    type Output = (Head::Output, Tail::Output);
+    type Iter = SequenceParseIter<'parse, 'source, Head, Tail>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        SequenceParseIter {
+            parsers: self,
+            is_at_start: true,
+            source,
+            start,
+            head_iter: None,
+            tail_iter: None,
+        }
+    }
+}
+
+impl<'parse, 'source, Head, Tail> ParseIter for SequenceParseIter<'parse, 'source, Head, Tail>
+where
+    Head: Parser<'parse, 'source>,
+    Tail: Parser<'parse, 'source>,
+{
+    type Output = (Head::Output, Tail::Output);
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        let mut foremost_error: Option<ParseError> = None;
+        loop {
+            if let Some(tail_iter) = &mut self.tail_iter {
+                match tail_iter.next_parse() {
+                    None => {}
+                    Some(Err(err)) => {
+                        if foremost_error.as_ref().map(|err| err.location) < Some(err.location) {
+                            foremost_error = Some(err);
+                        }
+                    }
+
+                    Some(Ok(tail_end)) => return Some(Ok(tail_end)),
+                }
+                self.tail_iter = None;
+            } else if let Some(head_iter) = &mut self.head_iter {
+                match head_iter.next_parse() {
+                    None => {}
+                    Some(Err(err)) => {
+                        if foremost_error.as_ref().map(|err| err.location) < Some(err.location) {
+                            foremost_error = Some(err);
+                        }
+                    }
+                    Some(Ok(head_end)) => {
+                        self.tail_iter = Some(self.parsers.tail.parse_iter(self.source, head_end));
+                        continue;
+                    }
+                }
+                self.head_iter = None;
+                return foremost_error.map(Err);
+            } else if self.is_at_start {
+                self.is_at_start = false;
+                self.head_iter = Some(self.parsers.head.parse_iter(self.source, self.start));
+            } else {
+                return None;
+            }
+        }
+    }
+
+    fn take_data(&mut self) -> (Head::Output, Tail::Output) {
+        let head = self.head_iter.as_mut().unwrap().take_data();
+        let tail = self.tail_iter.as_mut().unwrap().take_data();
+        (head, tail)
+    }
+}
+
+// --- Alternation
+
+#[derive(Debug)]
+pub enum Either<A, B> {
+    Left(A),
+    Right(B),
+}
+
+pub struct EitherParser<A, B> {
+    left: A,
+    right: B,
+}
+
+pub struct EitherParseIter<'parse, 'source, A, B>
+where
+    A: Parser<'parse, 'source>,
+    B: Parser<'parse, 'source>,
+{
+    source: &'source str,
+    start: usize,
+    parsers: &'parse EitherParser<A, B>,
+    iter: Either<A::Iter, B::Iter>,
+}
+
+impl<'parse, 'source, A, B> Parser<'parse, 'source> for EitherParser<A, B>
+where
+    A: Parser<'parse, 'source> + 'parse,
+    B: Parser<'parse, 'source> + 'parse,
+{
+    type Iter = EitherParseIter<'parse, 'source, A, B>;
+
+    type Output = Either<A::Output, B::Output>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        EitherParseIter {
+            source,
+            start,
+            parsers: self,
+            iter: Either::Left(self.left.parse_iter(source, start)),
+        }
+    }
+}
+
+impl<'parse, 'source, A, B> ParseIter for EitherParseIter<'parse, 'source, A, B>
+where
+    A: Parser<'parse, 'source>,
+    B: Parser<'parse, 'source>,
+{
+    type Output = Either<A::Output, B::Output>;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        let mut foremost_error: Option<ParseError> = None;
+        loop {
+            match &mut self.iter {
+                Either::Left(iter) => {
+                    match iter.next_parse() {
+                        None => {}
+                        Some(Err(err)) => {
+                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
+                            {
+                                foremost_error = Some(err);
+                            }
+                        }
+                        Some(Ok(end)) => return Some(Ok(end)),
+                    }
+                    self.iter =
+                        Either::Right(self.parsers.right.parse_iter(self.source, self.start));
+                }
+                Either::Right(iter) => {
+                    match iter.next_parse() {
+                        None => {}
+                        Some(Err(err)) => {
+                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
+                            {
+                                foremost_error = Some(err);
+                            }
+                        }
+                        Some(Ok(end)) => return Some(Ok(end)),
+                    }
+                    return foremost_error.map(Err);
+                }
+            }
+        }
+    }
+
+    fn take_data(&mut self) -> Either<A::Output, B::Output> {
+        match &mut self.iter {
+            Either::Left(iter) => Either::Left(iter.take_data()),
+            Either::Right(iter) => Either::Right(iter.take_data()),
+        }
+    }
+}
+
+// --- Parsing a repeated pattern
+
+pub struct RepeatParser<Pattern, Sep> {
+    pattern: Pattern,
+    min: usize,
+    max: Option<usize>,
+    sep: Sep,
+    sep_is_terminator: bool,
+}
+
+pub struct RepeatParseIter<'parse, 'source, Pattern, Sep>
+where
+    Pattern: Parser<'parse, 'source>,
+    Sep: Parser<'parse, 'source>,
+{
+    source: &'source str,
+    params: &'parse RepeatParser<Pattern, Sep>,
+    pattern_iters: Vec<Pattern::Iter>,
+    sep_iters: Vec<Sep::Iter>,
+    starts: Vec<usize>,
+}
+
+impl<'parse, 'source, Pattern, Sep> Parser<'parse, 'source> for RepeatParser<Pattern, Sep>
+where
+    Pattern: Parser<'parse, 'source> + 'parse,
+    Sep: Parser<'parse, 'source> + 'parse,
+{
+    type Output = Vec<Pattern::Output>;
+    type Iter = RepeatParseIter<'parse, 'source, Pattern, Sep>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        RepeatParseIter {
+            source,
+            params: self,
+            pattern_iters: vec![self.pattern.parse_iter(source, start)],
+            sep_iters: vec![],
+            starts: vec![start],
+        }
+    }
+}
+
+impl<Pattern, Sep> RepeatParser<Pattern, Sep> {
+    fn check_repeat_count(&self, count: usize) -> bool {
+        let even_matches = count / 2;
+        let expected_parity = !self.sep_is_terminator as usize;
+        (count == 0 || count % 2 == expected_parity)
+            && self.min <= even_matches
+            && match self.max {
+                None => true,
+                Some(max) => even_matches <= max,
+            }
+    }
+}
+
+impl<'parse, 'source, Pattern, Sep> ParseIter for RepeatParseIter<'parse, 'source, Pattern, Sep>
+where
+    Pattern: Parser<'parse, 'source> + 'parse,
+    Sep: Parser<'parse, 'source> + 'parse,
+{
+    type Output = Vec<Pattern::Output>;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        // TODO: When considering creating a new iterator, if we have already
+        // matched `max` times, don't bother; no matches can come of it.
+        let mut foremost_error: Option<ParseError> = None;
+        let mut got_iter = true;
+        loop {
+            assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
+            assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
+            if got_iter {
+                let next_parse = if self.starts.is_empty() {
+                    // No more iterators. We exhausted all possibilities.
+                    return foremost_error.map(Err);
+                } else if self.starts.len() % 2 == 1 {
+                    self.pattern_iters.last_mut().unwrap().next_parse()
+                } else {
+                    self.sep_iters.last_mut().unwrap().next_parse()
+                };
+
+                // Get the next match.
+                match next_parse {
+                    None => {
+                        got_iter = false;
+                    }
+                    Some(Err(err)) => {
+                        got_iter = false;
+                        if Some(err.location) > foremost_error.as_ref().map(|err| err.location) {
+                            foremost_error = Some(err);
+                        }
+                    }
+                    Some(Ok(point)) => {
+                        // Got a match! But don't return it to the user yet.
+                        // Repeats are "greedy"; we press on to see if we can
+                        // match again! If we just matched `pattern`, try
+                        // `sep`; if we just matched `sep`, try `pattern`.
+                        self.starts.push(point);
+                        if self.starts.len() % 2 == 1 {
+                            self.pattern_iters
+                                .push(self.params.pattern.parse_iter(self.source, point));
+                        } else {
+                            self.sep_iters
+                                .push(self.params.sep.parse_iter(self.source, point));
+                        }
+                    }
+                }
+            } else {
+                // The current top-of-stack iterator is exhausted and needs to
+                // be discarded.
+                if self.starts.len() % 2 == 1 {
+                    self.pattern_iters.pop();
+                } else {
+                    self.sep_iters.pop();
+                }
+                let end = self.starts.pop().unwrap();
+                got_iter = true;
+
+                // Repeats are "greedy", so we need to yield the longest match
+                // first. This means returning only "on the way out" (a
+                // postorder walk of the tree of possible parses).
+                if self.params.check_repeat_count(self.starts.len()) {
+                    return Some(Ok(end));
+                }
+            }
+        }
+    }
+
+    fn take_data(&mut self) -> Vec<Pattern::Output> {
+        self.starts.truncate(0);
+        self.sep_iters.truncate(0);
+        self.pattern_iters
+            .split_off(0)
+            .iter_mut()
+            .map(|iter| iter.take_data())
+            .collect()
+    }
+}
+
+// --- Mapping parser
+
+pub struct MapParser<P, F> {
+    parser: P,
+    mapper: F,
+}
+
+pub struct MapParseIter<'parse, 'source, P, F>
+where
+    P: Parser<'parse, 'source>,
+{
+    iter: P::Iter,
+    mapper: &'parse F,
+}
+
+impl<'parse, 'source, P, F, T> Parser<'parse, 'source> for MapParser<P, F>
+where
+    P: Parser<'parse, 'source>,
+    F: Fn(P::Output) -> T,
+    F: 'parse,
+{
+    type Output = T;
+    type Iter = MapParseIter<'parse, 'source, P, F>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        MapParseIter {
+            iter: self.parser.parse_iter(source, start),
+            mapper: &self.mapper,
+        }
+    }
+}
+
+impl<'parse, 'source, P, F, T> ParseIter for MapParseIter<'parse, 'source, P, F>
+where
+    P: Parser<'parse, 'source>,
+    F: Fn(P::Output) -> T,
+{
+    type Output = T;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        self.iter.next_parse()
+    }
+
+    fn take_data(&mut self) -> Self::Output {
+        (self.mapper)(self.iter.take_data())
+    }
+}
+
+// --- Wrappers
+
+pub fn empty() -> EmptyParser {
+    EmptyParser
+}
+
+pub fn exact(s: &str) -> ExactParser {
+    ExactParser { s: s.to_string() }
+}
+
+pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail> {
+    SequenceParser { head, tail }
+}
+
+// pub fn sequence(parsers: impl ParserTuple) -> impl for<'parse, 'source> Parser<'parse, 'source> {
+//     parsers.product()
+// }
+
+pub fn either<A, B>(
+    left: impl for<'parse, 'source> Parser<'parse, 'source, Output = A> + 'static,
+    right: impl for<'parse, 'source> Parser<'parse, 'source, Output = B> + 'static,
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Either<A, B>> {
+    EitherParser { left, right }
+}
+
+// pub fn one_of(parsers: impl ParserTuple) -> impl for<'parse, 'source> Parser<'parse, 'source> {
+//     parsers.sum()
+// }
+
+pub fn repeat<Pattern, Sep>(
+    pattern: Pattern,
+    sep: Sep,
     min: usize,
     max: Option<usize>,
     sep_is_terminator: bool,
-) -> Parser {
-    Parser {
-        parser_source,
-        body: Box::new(ParserBody::Repeat(Box::new(Repeat {
-            pattern,
-            min,
-            max,
-            sep,
-            sep_is_terminator,
-        }))),
+) -> RepeatParser<Pattern, Sep> {
+    RepeatParser {
+        pattern,
+        min,
+        max,
+        sep,
+        sep_is_terminator,
     }
 }
 
-pub fn opt(pattern: Parser) -> Parser {
-    one_of([pattern, empty()])
+pub fn opt<T>(
+    pattern: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Option<T>> {
+    either(pattern, empty()).map(|e| match e {
+        Either::Left(left) => Some(left),
+        Either::Right(()) => None,
+    })
 }
 
 // Kleene *
-pub fn star(pattern: Parser) -> Parser {
-    repeat(
-        pattern.parser_source.clone() + "*",
-        pattern,
-        empty(),
-        0,
-        None,
-        false,
-    )
+pub fn star<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), 0, None, false)
 }
 
 // Kleene +
-pub fn plus(pattern: Parser) -> Parser {
-    repeat(
-        pattern.parser_source.clone() + "+",
-        pattern,
-        empty(),
-        1,
-        None,
-        false,
-    )
+pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), 1, None, false)
 }
 
-pub fn sep_by(pattern: Parser, sep: Parser) -> Parser {
-    repeat(
-        format!("sep_by({}, {})", pattern.parser_source, sep.parser_source),
-        pattern,
-        sep,
-        0,
-        None,
-        false,
-    )
+pub fn sep_by<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
+    repeat(pattern, sep, 0, None, false)
+}
+
+pub fn lines<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, ExactParser> {
+    repeat(pattern, exact("\n"), 0, None, true)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+
     use super::*;
 
     #[track_caller]
-    fn assert_parse(parser: &Parser, s: &str) {
+    fn assert_parse<'s, P>(parser: &'s P, s: &'s str)
+    where
+        P: Parser<'s, 's>,
+    {
         if let Err(err) = parser.parse(s) {
             panic!("parse failed: {}", err);
         }
     }
 
     #[track_caller]
-    fn assert_no_parse(parser: &Parser, s: &str) {
+    fn assert_no_parse<'s, P>(parser: &'s P, s: &'s str)
+    where
+        P: Parser<'s, 's>,
+        P::Output: Debug,
+    {
         if let Ok(m) = parser.parse(s) {
             panic!("expected no match, got: {:?}", m);
         }
@@ -471,13 +660,13 @@ mod tests {
         assert_no_parse(&p, "o");
         assert_no_parse(&p, "nok");
 
-        let p = sequence([exact("ok"), exact("go")]);
+        let p = sequence(exact("ok"), exact("go"));
         assert_parse(&p, "okgo");
         assert_no_parse(&p, "ok");
         assert_no_parse(&p, "go");
         assert_no_parse(&p, "");
 
-        let p = one_of([empty(), exact("ok")]);
+        let p = either(empty(), exact("ok"));
         assert_parse(&p, "");
         assert_parse(&p, "ok");
         assert_no_parse(&p, "okc");

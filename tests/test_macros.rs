@@ -1,15 +1,23 @@
-use aoc_parse::parser;
-use aoc_parse::Parser;
+use std::fmt::Debug;
+
+use aoc_parse::{parser, prelude::*};
 
 #[track_caller]
-fn assert_parse(parser: &Parser, s: &str) {
+fn assert_parse<'s, P>(parser: &'s P, s: &'s str)
+where
+    P: Parser<'s, 's>,
+{
     if let Err(err) = parser.parse(s) {
         panic!("parse failed: {}", err);
     }
 }
 
 #[track_caller]
-fn assert_no_parse(parser: &Parser, s: &str) {
+fn assert_no_parse<'s, P>(parser: &'s P, s: &'s str)
+where
+    P: Parser<'s, 's>,
+    P::Output: Debug,
+{
     if let Ok(m) = parser.parse(s) {
         panic!("expected no match, got: {:?}", m);
     }

@@ -25,6 +25,8 @@ enum ParseErrorReason {
     Extra,
     #[error("expected {0:?}")]
     Expected(String),
+    #[error("nothing matches this pattern")]
+    CannotMatch,
 }
 
 impl ParseError {
@@ -33,6 +35,14 @@ impl ParseError {
             source: source.to_string(),
             location,
             reason: ParseErrorReason::Extra,
+        }
+    }
+
+    pub fn new_cannot_match(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::CannotMatch,
         }
     }
 
