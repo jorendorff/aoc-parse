@@ -79,7 +79,10 @@ macro_rules! parser {
             @seq
             [ $($tail)* ]
             [
-                $f ($crate::parser!(@list [$($args)*] [] []))
+                $crate::functions::ParserFunction::call_parser_function(
+                    &$f,
+                    ( $crate::parser!(@args [$($args)*] [] ()) ),
+                )
                 ,
                 $($stack ,)*
             ]
@@ -113,6 +116,36 @@ macro_rules! parser {
     };
     (@prim { $($nested:tt)* }) => {
         $crate::parser!(@list [ $( $nested )* ] [] [])
+    };
+
+    (@args [ , $($tail:tt)* ] [ $($seq:tt)* ] ( $( $arg:expr , )* )) => {
+        // end of an argument in an argument list
+        $crate::parser!(
+            @args
+            [ $( $tail )* ]
+            [ ]
+            (
+                $( $arg:expr , )*
+                $crate::parser!(@seq [ $( $seq )* ] [ ]) ,
+            )
+        )
+    };
+    (@args [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] ( $( $out:expr , )* )) => {
+        // not the end of an arg; just move a token from the input to the holding area
+        $crate::parser!(
+            @args
+            [ $( $tail )* ]
+            [ $( $seq )* $next ]
+            ( $( $out , )* )
+        )
+    };
+    (@args [ /*end of input*/ ] [ ] $out:expr) => {
+        // end of argument list, after trailing comma or empty
+        $out
+    };
+    (@args [ /*end of input*/ ] [ $($seq:tt)+ ] ( $( $out:expr , )* )) => {
+        // end of argument list with no trailing comma: infer one
+        $crate::parser!(@args [,] [ $($seq)+ ] ( $( $out , )* ))
     };
 
     (@list [ , $($tail:tt)* ] [ $($seq:tt)* ] [ ]) => {
@@ -151,7 +184,7 @@ macro_rules! parser {
         $out
     };
     (@list [ /*end of input*/ ] [ $($seq:tt)+ ] [ $( $out:expr )? ]) => {
-        // end of alternation with no comma: stick it in
+        // end of alternation with no comma: infer one
         $crate::parser!(@list [,] [ $($seq)+ ] [ $( $out )? ])
     };
 
