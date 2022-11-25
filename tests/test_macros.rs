@@ -38,7 +38,7 @@ where
 #[test]
 fn test_macros() {
     let p = parser!("hello " "world");
-    assert_parse(&p, "hello world");
+    assert_parse_eq(&p, "hello world", ((), ((), ())));
     assert_no_parse(&p, "hello ");
 
     let p = parser!("hello " "strange "* "world");
@@ -60,4 +60,17 @@ fn test_macros() {
     assert_no_parse(&p, "whee!");
     assert_no_parse(&p, "\n");
     assert_no_parse(&p, "whee!\n\n");
+
+    let p = parser!(_a: "ok" => "OK");
+    assert_parse_eq(&p, "ok", "OK");
+
+    let p = parser!((_a: "hello") " " (_b: "world") => "!");
+    assert_parse_eq(&p, "hello world", "!");
+    assert_no_parse(&p, "");
+    assert_no_parse(&p, "hello");
+    assert_no_parse(&p, "hello ");
+    assert_no_parse(&p, "helloworld");
+    assert_no_parse(&p, " world");
+    assert_no_parse(&p, "world");
+    assert_no_parse(&p, "hello world ");
 }
