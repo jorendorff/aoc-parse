@@ -638,6 +638,18 @@ mod tests {
     }
 
     #[track_caller]
+    fn assert_parse_eq<'s, P>(parser: &'s P, s: &'s str, expected: P::Output)
+    where
+        P: Parser<'s, 's>,
+        P::Output: PartialEq + Debug,
+    {
+        match parser.parse(s) {
+            Err(err) => panic!("parse failed: {}", err),
+            Ok(val) => assert_eq!(val, expected),
+        }
+    }
+
+    #[track_caller]
     fn assert_no_parse<'s, P>(parser: &'s P, s: &'s str)
     where
         P: Parser<'s, 's>,
@@ -651,7 +663,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let p = empty();
-        assert_parse(&p, "");
+        assert_parse_eq(&p, "", ());
         assert_no_parse(&p, "x");
 
         let p = exact("ok");
