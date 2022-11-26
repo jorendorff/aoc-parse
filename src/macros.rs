@@ -226,7 +226,10 @@ macro_rules! parser {
     };
 
     (rule $name:ident = $($body:tt)* ; $($tail:tt)*) => {
-        todo!("rule syntax")
+        {
+            let $name = check_parser($crate::parser!($($body)*));
+            $crate::parser!($($tail)*)
+        }
     };
     ($label:ident : $($tail:tt)*) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ ] [ ])
