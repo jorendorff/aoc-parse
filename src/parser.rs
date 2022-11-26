@@ -53,7 +53,7 @@ pub trait ParseIter {
     fn next_parse(&mut self) -> Option<Result<usize>>;
 
     /// Consume this iterator to extract data. This would take `self` by value,
-    /// except that's not compatible with trait objects.
+    /// except that's not compatible with trait objects. (Box<Self> is.)
     fn take_data(&mut self) -> Self::Output;
 }
 
