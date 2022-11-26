@@ -407,13 +407,13 @@ where
 
 impl<Pattern, Sep> RepeatParser<Pattern, Sep> {
     fn check_repeat_count(&self, count: usize) -> bool {
-        let even_matches = count / 2;
         let expected_parity = !self.sep_is_terminator as usize;
+        let nmatches = (count + expected_parity) / 2;
         (count == 0 || count % 2 == expected_parity)
-            && self.min <= even_matches
+            && self.min <= nmatches
             && match self.max {
                 None => true,
-                Some(max) => even_matches <= max,
+                Some(max) => nmatches <= max,
             }
     }
 }
@@ -703,5 +703,10 @@ mod tests {
         assert_no_parse(&p, "cow,,cow");
         assert_no_parse(&p, "cow,cow,");
         assert_no_parse(&p, ",");
+
+        let p = plus(exact("a"));
+        assert_no_parse(&p, "");
+        assert_parse(&p, "a");
+        assert_parse(&p, "aa");
     }
 }
