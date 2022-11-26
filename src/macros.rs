@@ -139,7 +139,7 @@ macro_rules! parser {
     };
 
     (@prim $x:ident) => {
-        ::core::compile_error!("no support for identifiers yet")
+        $crate::macros::check_parser($x) // TODO: does check_parser help here? does it hurt?
     };
     (@prim $x:literal) => {
         $crate::macros::exact($x)
@@ -234,4 +234,14 @@ macro_rules! parser {
     ($($tail:tt)*) => {
         $crate::parser!(@seq _ [ $($tail)* ] [ ] [ ])
     };
+}
+
+/// My hope here is that this will help with the error message when you
+/// accidentally do something like `parser!(blah)` where `blah` isn't a parser
+/// at all.
+pub fn check_parser<'a, 'b, P>(parser: P) -> P
+where
+    P: crate::Parser<'a, 'b>,
+{
+    parser
 }

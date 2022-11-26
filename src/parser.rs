@@ -638,10 +638,11 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_parse_eq<'s, P>(parser: &'s P, s: &'s str, expected: P::Output)
+    fn assert_parse_eq<'s, P, E>(parser: &'s P, s: &'s str, expected: E)
     where
         P: Parser<'s, 's>,
-        P::Output: PartialEq + Debug,
+        P::Output: PartialEq<E> + Debug,
+        E: Debug,
     {
         match parser.parse(s) {
             Err(err) => panic!("parse failed: {}", err),

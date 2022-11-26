@@ -6,7 +6,7 @@ pub mod macros;
 mod parser;
 
 pub use error::{ParseError, Result};
-pub use parser::{empty, exact, plus, repeat, star, Parser};
+pub use parser::{empty, exact, plus, repeat, star, ParseIter, Parser};
 
 pub mod prelude {
     pub use crate::functions::lines;

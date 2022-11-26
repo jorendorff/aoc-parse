@@ -13,10 +13,11 @@ where
 }
 
 #[track_caller]
-fn assert_parse_eq<'s, P>(parser: &'s P, s: &'s str, expected: P::Output)
+fn assert_parse_eq<'s, P, E>(parser: &'s P, s: &'s str, expected: E)
 where
     P: Parser<'s, 's>,
-    P::Output: PartialEq + Debug,
+    P::Output: PartialEq<E> + Debug,
+    E: Debug,
 {
     match parser.parse(s) {
         Err(err) => panic!("parse failed: {}", err),
@@ -73,4 +74,60 @@ fn test_macros() {
     assert_no_parse(&p, " world");
     assert_no_parse(&p, "world");
     assert_no_parse(&p, "hello world ");
+}
+
+#[test]
+fn test_alpha() {
+    use aoc_parse::{ParseError, ParseIter, Parser, Result};
+
+    #[allow(non_camel_case_types)]
+    struct alpha;
+    enum AlphaIter<'source> {
+        Before(&'source str, usize),
+        Success(char),
+        Error,
+    }
+
+    impl<'parse, 'source> Parser<'parse, 'source> for alpha {
+        type Output = char;
+        type Iter = AlphaIter<'source>;
+        fn parse_iter(&'parse self, source: &'source str, start: usize) -> AlphaIter<'source> {
+            println!("parsing {source:?} at {start}");
+            AlphaIter::Before(source, start)
+        }
+    }
+
+    impl<'source> ParseIter for AlphaIter<'source> {
+        type Output = char;
+        fn next_parse(&mut self) -> Option<Result<usize>> {
+            if let AlphaIter::Before(source, start) = *self {
+                match source[start..].chars().next() {
+                    Some(c) if c.is_alphabetic() => {
+                        *self = AlphaIter::Success(c);
+                        Some(Ok(start + c.len_utf8()))
+                    }
+                    q => {
+                        println!("nope, {q:?} is not alphabetic");
+                        *self = AlphaIter::Error;
+                        Some(Err(ParseError::new_expected(source, start, "letter")))
+                    }
+                }
+            } else {
+                None
+            }
+        }
+
+        fn take_data(&mut self) -> char {
+            match self {
+                AlphaIter::Success(c) => *c,
+                _ => panic!("invalid state"),
+            }
+        }
+    }
+
+    let p = parser!(a: alpha+ => a.0.into_iter().collect::<String>());
+    assert_no_parse(&p, "");
+    assert_no_parse(&p, " hello");
+    assert_parse_eq(&p, "hello", "hello");
+    assert_parse_eq(&p, "京", "京");
 }
