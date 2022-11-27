@@ -25,6 +25,12 @@ enum ParseErrorReason {
     Extra,
     #[error("expected {0:?}")]
     Expected(String),
+    #[error("failed to parse {input:?} as type {type_name}: {message}")]
+    FromStrFailed {
+        input: String,
+        type_name: &'static str,
+        message: String,
+    },
     #[error("nothing matches this pattern")]
     CannotMatch,
 }
@@ -38,19 +44,37 @@ impl ParseError {
         }
     }
 
-    pub fn new_cannot_match(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::CannotMatch,
-        }
-    }
-
     pub fn new_expected(source: &str, location: usize, expected: &str) -> Self {
         ParseError {
             source: source.to_string(),
             location,
             reason: ParseErrorReason::Expected(expected.to_string()),
+        }
+    }
+
+    pub fn new_from_str_failed(
+        source: &str,
+        start: usize,
+        end: usize,
+        type_name: &'static str,
+        message: String,
+    ) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location: start,
+            reason: ParseErrorReason::FromStrFailed {
+                input: source[start..end].to_string(),
+                type_name,
+                message,
+            },
+        }
+    }
+
+    pub fn new_cannot_match(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::CannotMatch,
         }
     }
 }

@@ -1,4 +1,13 @@
+use std::{
+    any::{self, Any},
+    fmt::Display,
+    marker::PhantomData,
+    str::FromStr,
+};
+
 use crate::{ParseError, Result};
+use lazy_static::lazy_static;
+use regex::Regex;
 
 pub trait Parser<'parse, 'source> {
     type Output;
@@ -549,6 +558,110 @@ where
     }
 }
 
+// --- Default parsers for some types that implement FromStr
+
+// Parser that uses a Regex to find the longest matching string, then FromStr
+// to convert that string to a Rust type. No backtracking.
+trait FromStrParse: FromStr + Any {
+    fn regex() -> &'static regex::Regex;
+}
+
+pub struct FromStrParser<T> {
+    phantom: PhantomData<fn() -> T>,
+}
+
+pub enum FromStrParseIter<'source, T> {
+    Init { source: &'source str, start: usize },
+    Done { value: Option<T> },
+}
+
+impl<'parse, 'source, T> Parser<'parse, 'source> for FromStrParser<T>
+where
+    T: FromStrParse + 'source,
+    <T as FromStr>::Err: Display,
+{
+    type Output = T;
+    type Iter = FromStrParseIter<'source, T>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        FromStrParseIter::Init { source, start }
+    }
+}
+
+impl<'source, T> ParseIter for FromStrParseIter<'source, T>
+where
+    T: FromStrParse + Any,
+    <T as FromStr>::Err: Display,
+{
+    type Output = T;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        match *self {
+            FromStrParseIter::Init { source, start } => match T::regex().find(&source[start..]) {
+                Some(m) => match T::from_str(m.as_str()) {
+                    Ok(value) => {
+                        *self = FromStrParseIter::Done { value: Some(value) };
+                        Some(Ok(start + m.end()))
+                    }
+                    Err(err) => {
+                        *self = FromStrParseIter::Done { value: None };
+                        Some(Err(ParseError::new_from_str_failed(
+                            source,
+                            start,
+                            start + m.end(),
+                            any::type_name::<T>(),
+                            format!("{err}"),
+                        )))
+                    }
+                },
+                None => {
+                    *self = FromStrParseIter::Done { value: None };
+                    Some(Err(ParseError::new_expected(
+                        source,
+                        start,
+                        any::type_name::<T>(),
+                    )))
+                }
+            },
+            _ => None,
+        }
+    }
+
+    fn take_data(&mut self) -> Self::Output {
+        match self {
+            FromStrParseIter::Done { value } => value.take().unwrap(),
+            _ => unreachable!("matching failed"),
+        }
+    }
+}
+
+macro_rules! from_str_parse_impl {
+    ($($ty:ident)+, $re_name:ident = $re:expr) => {
+        fn $re_name() -> &'static regex::Regex {
+            lazy_static! {
+                static ref RE: Regex = Regex::new($re).unwrap();
+            }
+            &RE
+        }
+
+        $(
+            impl FromStrParse for $ty {
+                fn regex() -> &'static Regex {
+                    $re_name()
+                }
+            }
+
+            #[allow(non_upper_case_globals)]
+            #[allow(dead_code)]
+            pub const $ty: FromStrParser<$ty> = FromStrParser { phantom: PhantomData };
+        )+
+    };
+}
+
+from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex = r"\A(?:0|[123456789][0123456789]+)");
+from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex = r"\A(?:0|-?[123456789][0123456789]+)");
+from_str_parse_impl!(bool, bool_regex = r"true|false");
+
 // --- Wrappers
 
 pub fn empty() -> EmptyParser {
@@ -709,5 +822,10 @@ mod tests {
         assert_no_parse(&p, "");
         assert_parse(&p, "a");
         assert_parse(&p, "aa");
+
+        let p = sep_by(usize, exact(","));
+        assert_parse_eq(&p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
+
+        assert_no_parse(&u8, "256");
     }
 }
