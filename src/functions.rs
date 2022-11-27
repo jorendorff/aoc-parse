@@ -21,7 +21,10 @@ pub trait ParserFunction<Args> {
 pub struct lines;
 
 // Just take one argument for now.
-impl<'parse, 'source, T: Parser<'parse, 'source>> ParserFunction<(T,)> for lines {
+impl<'parse, 'source, T> ParserFunction<(T,)> for lines
+where
+    T: Parser<'parse, 'source>,
+{
     type Output = RepeatParser<T, ExactParser>;
 
     fn call_parser_function(&self, (line_parser,): (T,)) -> Self::Output {
