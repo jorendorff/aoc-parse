@@ -687,6 +687,16 @@ pub fn either<A, B>(
     EitherParser { left, right }
 }
 
+pub fn alt<T>(
+    left: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
+    right: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static {
+    EitherParser { left, right }.map(|out| match out {
+        Either::Left(value) => value,
+        Either::Right(value) => value,
+    })
+}
+
 // pub fn one_of(parsers: impl ParserTuple) -> impl for<'parse, 'source> Parser<'parse, 'source> {
 //     parsers.sum()
 // }

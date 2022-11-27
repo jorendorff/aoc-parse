@@ -74,6 +74,25 @@ fn test_macros() {
     assert_no_parse(&p, " world");
     assert_no_parse(&p, "world");
     assert_no_parse(&p, "hello world ");
+
+    let bit = parser!({ "0" => false, "1" => true });
+    let p = parser!(bit*);
+    assert_parse_eq(
+        &p,
+        "0010101",
+        (
+            vec![
+                (false, ()),
+                (false, ()),
+                (true, ()),
+                (false, ()),
+                (true, ()),
+                (false, ()),
+                (true, ()),
+            ],
+            (),
+        ),
+    );
 }
 
 #[test]

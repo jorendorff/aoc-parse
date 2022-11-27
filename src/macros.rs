@@ -2,7 +2,7 @@
 //use crate::parser::{self, Parser};
 //use crate::ParseError;
 
-pub use crate::parser::{either, empty, exact, lines, opt, plus, sequence, star};
+pub use crate::parser::{alt, empty, exact, lines, opt, plus, sequence, star};
 
 // type of a parser
 // `e => rustexpr` => type of the rustexpr (the tricky one)
@@ -196,7 +196,7 @@ macro_rules! parser {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $crate::macros::either($out, $crate::parser!(@seq _ [ $( $seq )* ] [ ] [ ])) ]
+            [ $crate::macros::alt($out, $crate::parser!(@seq _ [ $( $seq )* ] [ ] [ ])) ]
         )
     };
     (@list [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] [ $($out:expr)? ]) => {
