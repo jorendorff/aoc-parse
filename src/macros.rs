@@ -2,10 +2,10 @@
 //use crate::parser::{self, Parser};
 //use crate::ParseError;
 
-pub use crate::parser::{alt, empty, exact, lines, opt, plus, sequence, star};
+pub use crate::parser::{alt, empty, exact, lines, opt, parenthesize, plus, sequence, star};
 
-// type of a parser
-// `e => rustexpr` => type of the rustexpr (the tricky one)
+// Output type of a parser
+// `e => rustexpr` => type of the rustexpr
 // `ident: e` => type of e
 // `e as ty` => ty
 // `e1 e2` => match (type of e1, type of e2) {
@@ -17,7 +17,7 @@ pub use crate::parser::{alt, empty, exact, lines, opt, plus, sequence, star};
 // `e+` => Vec<type of e>
 // `e?` => Option<type of e>
 // `(e)` => type of e
-// `{ e, ...}` => Variant<(type of e, ...)>
+// `{ e, ...}` => type of e
 // `f(e, ...)` => return type of f (look it up)
 // `x` => type of x (look it up)
 //
@@ -45,7 +45,7 @@ pub use crate::parser::{alt, empty, exact, lines, opt, plus, sequence, star};
 ///   | seq "as" ty                 => TryMap($1, |x| $2::try_from(x))
 ///
 /// seq ::= term
-///   | seq term                    => $1.seq($2)
+///   | seq term                    => Sequence($1, $2)
 ///
 /// term ::= prim
 ///   | term "*"                    => Repeat($1, 0)
@@ -61,31 +61,84 @@ pub use crate::parser::{alt, empty, exact, lines, opt, plus, sequence, star};
 #[macro_export]
 macro_rules! parser {
     // parser!(@seq label [expr] [stack] [patterns])
-    // submacro to gradually parse `expr`, producing `stack` and `patterns` (in reverse).
-    // `stack` is a list of Rust expressions, parsers for the elements of the `expr`.
-    // `patterns` is a list of patterns that match the output of the overall SequenceParser we will build from the bits in `stack`.
-    (@seq _ [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:pat ,)* ]) => {
+    //
+    // Submacro to transform a pattern matching `expr` to a Rust Parser
+    // expression; except if `expr` was labeled, the label must already have
+    // been stripped off and passed in as `label`.
+    //
+    // Gradually parses the tokens in `expr`, producing `stack` (in reverse)
+    // and `patterns` (in reverse for no good reason), then at the end converts
+    // those output-stacks into a Rust parser-expression using `@reverse` and
+    // `@reverse_pats`.
+    //
+    // `stack` is a list of Rust expressions, parsers for the elements of the
+    // `expr`. `patterns` is a list of patterns that match the output of the
+    // overall SequenceParser we will build from the bits in `stack`.
+    //
+    // BUG: Because of the simplistic way this macro-parses the input, it
+    // doesn't reject some bad syntax like `foo?(x)` or `foo??` or `foo++`.
+
+    // Mapper at the end of a pattern that is not labeled, `expr ::= label => rust_expr`.
+    (@seq _ [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(@seq _ [] [ $($stack)* ] [ $($pats ,)* ])
-            .map(| ( $crate::parser!(@reverse_pats [ $($pats ,)* ] [ () ]) ) | $mapper)
+            .map(| ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper)
     };
-    (@seq $label:ident [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:pat ,)* ]) => {
+
+    // Mapper at the end of a pattern that is labeled.
+    //
+    // Experimentally: In `(foo: t1 ", " t2 => f1(foo)) => f2(foo)` the pair is
+    // available as `foo` in the inner mapper. Then the result of the inner
+    // mapper is named `foo` in the outer mapper.
+    (@seq $label:ident [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(@seq $label [] [ $($stack)* ] [ $($pats ,)* ])
-            .map(| $label @ ( $crate::parser!(@reverse_pats [ $($pats ,)* ] [ () ]) ) | $mapper)
+            .map(| $label @ ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper)
     };
-    (@seq $label:tt [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:pat ,)* ]) => {
+
+    // Recognize `as` keyword, not yet supported.
+    //
+    // By design of the syntax, `as` only happens at the end of input here.
+    (@seq $label:tt [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         todo!("cast syntax")
     };
-    (@seq $label:tt [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:pat , $($pats:pat ,)* ]) => {
+
+    // Reject unsupported non-greedy regex syntax.
+    (@seq $label:tt [ * ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!("non-greedy quantifier `*?` is not supported")
+    };
+
+    // Reject unsupported non-greedy regex syntax.
+    (@seq $label:tt [ + ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!("non-greedy quantifier `+?` is not supported")
+    };
+
+    // Detect Kleene * and apply it to the preceding term.
+    (@seq $label:tt [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
     };
-    (@seq $label:tt [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:pat , $($pats:pat ,)* ]) => {
+
+    // Detect Kleene + and apply it to the preceding term.
+    (@seq $label:tt [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
     };
-    (@seq $label:tt [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $top_pat:pat , $($pats:pat ,)* ]) => {
+
+    // Detect optional `?` and apply it to the preceding term.
+    (@seq $label:tt [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ] [ _ , $($pats ,)* ])
     };
+
+    // A quantifier at the beginning of input (nothing on the stack) is an errror.
+    (@seq $label:tt [ * $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!("quantifier `*` has to come after something, not at the start of an expression.")
+    };
+    (@seq $label:tt [ + $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!("quantifier `+` has to come after something, not at the start of an expression.")
+    };
+    (@seq $label:tt [ ? $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!("quantifier `?` has to come after something, not at the start of an expression.")
+    };
+
     // call syntax
-    (@seq $label:tt [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:pat ,)* ]) => {
+    (@seq $label:tt [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(
             @seq $label
             [ $($tail)* ]
@@ -100,30 +153,59 @@ macro_rules! parser {
             [ _ , $($pats ,)* ]
         )
     };
-    // special case of the next case, where $x is of the form `(ident : parser)`
-    (@seq $label:tt [ ( $sublabel:ident : $($expr:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:pat ,)* ]) => {
+
+    // parenthesized subpattern with a label
+    (@seq $label:tt [ ( $sublabel:ident : $($expr:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(
             @seq $label
             [ $($tail)* ]
-            [ $crate::parser!(@prim ( $($expr)* )) , $($stack ,)* ]
+            [
+                $crate::parser!(@prim ( $($expr)* )) ,
+                $($stack ,)*
+            ]
             [ $sublabel , $($pats ,)* ]
         )
     };
-    (@seq $label:tt [ $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:pat ,)* ]) => {
+
+    // string literal
+    (@seq $label:tt [ $x:literal $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(
             @seq $label
             [ $($tail)* ]
-            [ $crate::parser!(@prim $x) , $($stack ,)* ]
+            [
+                $crate::parser!(@prim $x) ,
+                $($stack ,)*
+            ]
+            [ #, /* no pattern */ $($pats ,)* ]
+        )
+    };
+
+    // the first `tt` of any other `term`
+    (@seq $label:tt [ $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        $crate::parser!(
+            @seq $label
+            [ $($tail)* ]
+            [
+                $crate::parser!(@prim $x) ,
+                $($stack ,)*
+            ]
             [ _ , $($pats ,)* ]
         )
     };
-    (@seq $label:tt [ /* end of input */ ] [ $($parts:expr ,)* ] [ $($pats:pat ,)* ]) => {
+
+    // end of input
+    (@seq $label:tt [ ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::parser!(@reverse [ $($parts ,)* ] [ $crate::macros::empty() ])
     };
-    (@seq $label:tt [ $($tail:tt)* ] [ $($parts:expr ,)* ] [ $($pats:pat ,)* ]) => {
-        ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
+
+    // anything not matched by this point is an error
+    (@seq $label:tt [ $($tail:tt)* ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
+    // parser!(@reverse [input expr stack] [output stack])
+    //
+    // Take the stack of parsers and produce a single sequence-parser.
     (@reverse [ ] [ $out:expr ]) => {
         $out
     };
@@ -131,13 +213,26 @@ macro_rules! parser {
         $crate::parser!(@reverse [ $($tail ,)* ] [ $crate::macros::sequence($head, $out) ])
     };
 
-    (@reverse_pats [ ] [ $out:pat ]) => {
-        $out
+    // parser!(@reverse_pats [pattern stack] [output stack])
+    //
+    // Take the stack of Rust patterns, possibly interspersed with `#`
+    // to indicate "no pattern", and produce a single pattern.
+    (@reverse_pats [ ] [ $out:pat , ]) => {
+        $out  // don't produce a singleton-tuple-pattern
     };
-    (@reverse_pats [ $head:pat , $($tail:pat ,)* ] [ $out:pat ]) => {
-        $crate::parser!(@reverse_pats [ $($tail ,)* ] [ ($head, $out) ])
+    (@reverse_pats [ ] [ $($out:pat ,)* ]) => {
+        ( $( $out , )* )
+    };
+    (@reverse_pats [ #, $($tail:tt ,)* ] [ $( $out:pat , )* ]) => {
+        $crate::parser!(@reverse_pats [ $( $tail , )* ] [ $( $out , ) * ])
+    };
+    (@reverse_pats [ $head:pat , $($tail:tt ,)* ] [ $($out:pat ,)* ]) => {
+        $crate::parser!(@reverse_pats [ $( $tail , )* ] [ $head, $($out ,)* ])
     };
 
+    // parser!(@prim pattern)
+    //
+    // Transform a `prim` into a Rust Parser expression.
     (@prim $x:ident) => {
         $crate::macros::check_parser($x) // TODO: does check_parser help here? does it hurt?
     };
@@ -145,14 +240,20 @@ macro_rules! parser {
         $crate::macros::exact($x)
     };
     (@prim ( $($nested:tt)* )) => {
-        $crate::parser!(@seq _ [ $( $nested )* ] [ ] [ ])
+        $crate::macros::parenthesize(
+            $crate::parser!(@seq _ [ $( $nested )* ] [ ] [ ])
+        )
     };
     (@prim { $($nested:tt)* }) => {
         $crate::parser!(@list [ $( $nested )* ] [ ] [ ])
     };
 
+    // parser!(@args [unexamined input tokens] [current argument holding area] [transformed output argument exprs])
+    //
+    // Transform argument lists.
+
+    // end of an argument in an argument list
     (@args [ , $($tail:tt)* ] [ $($seq:tt)* ] ( $( $arg:expr , )* )) => {
-        // end of an argument in an argument list
         $crate::parser!(
             @args
             [ $( $tail )* ]
@@ -163,8 +264,9 @@ macro_rules! parser {
             )
         )
     };
+
+    // not the end of an arg; just move a token from the input to the holding area
     (@args [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] ( $( $out:expr , )* )) => {
-        // not the end of an arg; just move a token from the input to the holding area
         $crate::parser!(
             @args
             [ $( $tail )* ]
@@ -172,17 +274,23 @@ macro_rules! parser {
             ( $( $out , )* )
         )
     };
-    (@args [ /*end of input*/ ] [ ] $out:expr) => {
-        // end of argument list, after trailing comma or empty
+
+    // end of argument list, after trailing comma or empty
+    (@args [] [ ] $out:expr) => {
         $out
     };
-    (@args [ /*end of input*/ ] [ $($seq:tt)+ ] ( $( $out:expr , )* )) => {
-        // end of argument list with no trailing comma: infer one
+
+    // end of argument list with no trailing comma: infer one
+    (@args [] [ $($seq:tt)+ ] ( $( $out:expr , )* )) => {
         $crate::parser!(@args [,] [ $($seq)+ ] ( $( $out , )* ))
     };
 
+    // parser!(@list [unexamined input tokens] [current arm holding area] [transformed output arm parser expressions])
+    //
+    // The list of patterns in the body of an alternation.
+
+    // end of first arm of an alternation
     (@list [ , $($tail:tt)* ] [ $($seq:tt)* ] [ ]) => {
-        // end of first arm of an alternation
         $crate::parser!(
             @list
             [ $( $tail )* ]
@@ -190,8 +298,9 @@ macro_rules! parser {
             [ $crate::parser!(@seq _ [ $( $seq )* ] [ ] [ ]) ]
         )
     };
+
+    // end of a non-first arm of an alternation
     (@list [ , $($tail:tt)* ] [ $($seq:tt)* ] [ $out:expr ]) => {
-        // end of a non-first arm of an alternation
         $crate::parser!(
             @list
             [ $( $tail )* ]
@@ -199,8 +308,9 @@ macro_rules! parser {
             [ $crate::macros::alt($out, $crate::parser!(@seq _ [ $( $seq )* ] [ ] [ ])) ]
         )
     };
+
+    // not the end of an arm; just move a token from the input to the holding area
     (@list [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] [ $($out:expr)? ]) => {
-        // not the end of an arm; just move a token from the input to the holding area
         $crate::parser!(
             @list
             [ $( $tail )* ]
@@ -208,32 +318,42 @@ macro_rules! parser {
             [ $( $out )? ]
         )
     };
+
+    // completely empty alternation; could technically be understood as never matching,
+    // but it's not a useful thing to express, so reject.
     (@list [ ] [ ] [ ]) => {
-        // completely empty alternation
         ::core::compile_error("no arms in alternation")
     };
-    (@list [ /*end of input*/ ] [ ] [ $out:expr ]) => {
-        // end of alternation after comma
+
+    // end of alternation after comma
+    (@list [ ] [ ] [ $out:expr ]) => {
         $out
     };
-    (@list [ /*end of input*/ ] [ $($seq:tt)+ ] [ $( $out:expr )? ]) => {
-        // end of alternation with no comma: infer one
+
+    // end of alternation with no comma: infer one
+    (@list [ ] [ $($seq:tt)+ ] [ $( $out:expr )? ]) => {
         $crate::parser!(@list [,] [ $($seq)+ ] [ $( $out )? ])
     };
 
+    // parser!(@...) - This is an internal error, shouldn't happen in the wild.
     (@ $($tail:tt)*) => {
         ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
+    // parser!(rule ...) - Rule-expression, `parser ::= rule* expr`
     (rule $name:ident = $($body:tt)* ; $($tail:tt)*) => {
         {
             let $name = check_parser($crate::parser!($($body)*));
             $crate::parser!($($tail)*)
         }
     };
+
+    // parser!(ident : ...) - Labeled expression, `label ::= ident : cast`
     ($label:ident : $($tail:tt)*) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ ] [ ])
     };
+
+    // Hand anything else off to the @seq submacro.
     ($($tail:tt)*) => {
         $crate::parser!(@seq _ [ $($tail)* ] [ ] [ ])
     };

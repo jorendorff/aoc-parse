@@ -39,7 +39,7 @@ where
 #[test]
 fn test_macros() {
     let p = parser!("hello " "world");
-    assert_parse_eq(&p, "hello world", ((), ((), ())));
+    assert_parse_eq(&p, "hello world", ());
     assert_no_parse(&p, "hello ");
 
     let p = parser!("hello " "strange "* "world");
@@ -80,18 +80,7 @@ fn test_macros() {
     assert_parse_eq(
         &p,
         "0010101",
-        (
-            vec![
-                (false, ()),
-                (false, ()),
-                (true, ()),
-                (false, ()),
-                (true, ()),
-                (false, ()),
-                (true, ()),
-            ],
-            (),
-        ),
+        vec![false, false, true, false, true, false, true],
     );
 }
 
@@ -109,6 +98,7 @@ fn test_alpha() {
 
     impl<'parse, 'source> Parser<'parse, 'source> for alpha {
         type Output = char;
+        type RawOutput = (char,);
         type Iter = AlphaIter<'source>;
         fn parse_iter(&'parse self, source: &'source str, start: usize) -> AlphaIter<'source> {
             println!("parsing {source:?} at {start}");
@@ -117,7 +107,7 @@ fn test_alpha() {
     }
 
     impl<'source> ParseIter for AlphaIter<'source> {
-        type Output = char;
+        type RawOutput = (char,);
         fn next_parse(&mut self) -> Option<Result<usize>> {
             if let AlphaIter::Before(source, start) = *self {
                 match source[start..].chars().next() {
@@ -136,15 +126,15 @@ fn test_alpha() {
             }
         }
 
-        fn take_data(&mut self) -> char {
+        fn take_data(&mut self) -> (char,) {
             match self {
-                AlphaIter::Success(c) => *c,
+                AlphaIter::Success(c) => (*c,),
                 _ => panic!("invalid state"),
             }
         }
     }
 
-    let p = parser!(a: alpha+ => a.0.into_iter().collect::<String>());
+    let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(&p, "");
     assert_no_parse(&p, " hello");
     assert_parse_eq(&p, "hello", "hello");

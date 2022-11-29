@@ -4,6 +4,7 @@ mod error;
 pub mod functions;
 pub mod macros;
 mod parser;
+mod types;
 
 pub use error::{ParseError, Result};
 pub use parser::{empty, exact, plus, repeat, star, ParseIter, Parser};

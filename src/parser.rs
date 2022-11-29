@@ -5,17 +5,21 @@ use std::{
     str::FromStr,
 };
 
-use crate::{ParseError, Result};
+use crate::{
+    types::{Never, ParserOutput, TupleConcat},
+    ParseError, Result,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 
 pub trait Parser<'parse, 'source> {
     type Output;
-    type Iter: ParseIter<Output = Self::Output>;
+    type RawOutput: ParserOutput<UserType = Self::Output>;
+    type Iter: ParseIter<RawOutput = Self::RawOutput>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter;
 
-    fn parse(&'parse self, s: &'source str) -> Result<Self::Output> {
+    fn parse_raw(&'parse self, s: &'source str) -> Result<Self::RawOutput> {
         let mut it = self.parse_iter(s, 0);
         let mut best_end: Option<usize> = None;
         while let Some(parse) = it.next_parse() {
@@ -30,6 +34,21 @@ pub trait Parser<'parse, 'source> {
             Err(ParseError::new_extra(s, end))
         } else {
             panic!("parse iterator broke the contract: no matches and no error");
+        }
+    }
+
+    fn parse(&'parse self, s: &'source str) -> Result<Self::Output> {
+        self.parse_raw(s).map(|v| v.into_user_type())
+    }
+
+    fn map_raw<T, F>(self, mapper: F) -> MapRawParser<Self, F>
+    where
+        Self: Sized,
+        F: Fn(Self::RawOutput) -> T,
+    {
+        MapRawParser {
+            parser: self,
+            mapper,
         }
     }
 
@@ -57,13 +76,13 @@ pub trait Parser<'parse, 'source> {
 /// vectors when backtracking. (Backtracking probably has terrible performance
 /// anyway.)
 pub trait ParseIter {
-    type Output;
+    type RawOutput;
 
     fn next_parse(&mut self) -> Option<Result<usize>>;
 
     /// Consume this iterator to extract data. This would take `self` by value,
     /// except that's not compatible with trait objects. (Box<Self> is.)
-    fn take_data(&mut self) -> Self::Output;
+    fn take_data(&mut self) -> Self::RawOutput;
 }
 
 // --- Parser that successfully matches the empty string
@@ -72,6 +91,7 @@ pub struct EmptyParser;
 
 impl<'parse, 'source> Parser<'parse, 'source> for EmptyParser {
     type Output = ();
+    type RawOutput = ();
     type Iter = EmptyParseIter;
 
     fn parse_iter(&'parse self, _source: &'source str, start: usize) -> EmptyParseIter {
@@ -88,7 +108,7 @@ pub struct EmptyParseIter {
 }
 
 impl ParseIter for EmptyParseIter {
-    type Output = ();
+    type RawOutput = ();
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         if self.used {
@@ -104,9 +124,6 @@ impl ParseIter for EmptyParseIter {
 
 // --- Parser that never matches anything
 
-#[derive(Debug)]
-pub enum Never {}
-
 pub struct NeverParser;
 
 pub struct NeverParseIter<'source> {
@@ -116,6 +133,7 @@ pub struct NeverParseIter<'source> {
 
 impl<'parse, 'source> Parser<'parse, 'source> for NeverParser {
     type Output = Never;
+    type RawOutput = Never;
     type Iter = NeverParseIter<'source>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> NeverParseIter<'source> {
@@ -124,7 +142,7 @@ impl<'parse, 'source> Parser<'parse, 'source> for NeverParser {
 }
 
 impl<'source> ParseIter for NeverParseIter<'source> {
-    type Output = Never;
+    type RawOutput = Never;
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         Some(Err(ParseError::new_cannot_match(self.source, self.start)))
@@ -150,6 +168,7 @@ pub struct ExactParseIter<'parse, 'source> {
 
 impl<'parse, 'source> Parser<'parse, 'source> for ExactParser {
     type Output = ();
+    type RawOutput = ();
     type Iter = ExactParseIter<'parse, 'source>;
 
     fn parse_iter(
@@ -167,7 +186,7 @@ impl<'parse, 'source> Parser<'parse, 'source> for ExactParser {
 }
 
 impl<'parse, 'source> ParseIter for ExactParseIter<'parse, 'source> {
-    type Output = ();
+    type RawOutput = ();
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         if self.done {
@@ -211,8 +230,11 @@ impl<'parse, 'source, Head, Tail> Parser<'parse, 'source> for SequenceParser<Hea
 where
     Head: Parser<'parse, 'source> + 'parse,
     Tail: Parser<'parse, 'source> + 'parse,
+    Head::RawOutput: TupleConcat<Tail::RawOutput>,
 {
-    type Output = (Head::Output, Tail::Output);
+    type Output =
+        <<Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output as ParserOutput>::UserType;
+    type RawOutput = <Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output;
     type Iter = SequenceParseIter<'parse, 'source, Head, Tail>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
@@ -231,8 +253,9 @@ impl<'parse, 'source, Head, Tail> ParseIter for SequenceParseIter<'parse, 'sourc
 where
     Head: Parser<'parse, 'source>,
     Tail: Parser<'parse, 'source>,
+    Head::RawOutput: TupleConcat<Tail::RawOutput>,
 {
-    type Output = (Head::Output, Tail::Output);
+    type RawOutput = <Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output;
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         let mut foremost_error: Option<ParseError> = None;
@@ -273,10 +296,10 @@ where
         }
     }
 
-    fn take_data(&mut self) -> (Head::Output, Tail::Output) {
+    fn take_data(&mut self) -> Self::RawOutput {
         let head = self.head_iter.as_mut().unwrap().take_data();
         let tail = self.tail_iter.as_mut().unwrap().take_data();
-        (head, tail)
+        head.concat(tail)
     }
 }
 
@@ -309,9 +332,9 @@ where
     A: Parser<'parse, 'source> + 'parse,
     B: Parser<'parse, 'source> + 'parse,
 {
-    type Iter = EitherParseIter<'parse, 'source, A, B>;
-
     type Output = Either<A::Output, B::Output>;
+    type RawOutput = (Either<A::Output, B::Output>,);
+    type Iter = EitherParseIter<'parse, 'source, A, B>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
         EitherParseIter {
@@ -328,7 +351,7 @@ where
     A: Parser<'parse, 'source>,
     B: Parser<'parse, 'source>,
 {
-    type Output = Either<A::Output, B::Output>;
+    type RawOutput = (Either<A::Output, B::Output>,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         let mut foremost_error: Option<ParseError> = None;
@@ -365,11 +388,11 @@ where
         }
     }
 
-    fn take_data(&mut self) -> Either<A::Output, B::Output> {
-        match &mut self.iter {
-            Either::Left(iter) => Either::Left(iter.take_data()),
-            Either::Right(iter) => Either::Right(iter.take_data()),
-        }
+    fn take_data(&mut self) -> (Either<A::Output, B::Output>,) {
+        (match &mut self.iter {
+            Either::Left(iter) => Either::Left(iter.take_data().into_user_type()),
+            Either::Right(iter) => Either::Right(iter.take_data().into_user_type()),
+        },)
     }
 }
 
@@ -401,6 +424,7 @@ where
     Sep: Parser<'parse, 'source> + 'parse,
 {
     type Output = Vec<Pattern::Output>;
+    type RawOutput = (Vec<Pattern::Output>,);
     type Iter = RepeatParseIter<'parse, 'source, Pattern, Sep>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
@@ -432,7 +456,7 @@ where
     Pattern: Parser<'parse, 'source> + 'parse,
     Sep: Parser<'parse, 'source> + 'parse,
 {
-    type Output = Vec<Pattern::Output>;
+    type RawOutput = (Vec<Pattern::Output>,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         // TODO: When considering creating a new iterator, if we have already
@@ -499,18 +523,68 @@ where
         }
     }
 
-    fn take_data(&mut self) -> Vec<Pattern::Output> {
+    fn take_data(&mut self) -> (Vec<Pattern::Output>,) {
         self.starts.truncate(0);
         self.sep_iters.truncate(0);
-        self.pattern_iters
+        let v = self
+            .pattern_iters
             .split_off(0)
             .iter_mut()
-            .map(|iter| iter.take_data())
-            .collect()
+            .map(|iter| iter.take_data().into_user_type())
+            .collect();
+        (v,)
     }
 }
 
-// --- Mapping parser
+// --- Mapping parsers
+
+pub struct MapRawParser<P, F> {
+    parser: P,
+    mapper: F,
+}
+
+pub struct MapRawParseIter<'parse, 'source, P, F>
+where
+    P: Parser<'parse, 'source>,
+{
+    iter: P::Iter,
+    mapper: &'parse F,
+}
+
+impl<'parse, 'source, P, F, T> Parser<'parse, 'source> for MapRawParser<P, F>
+where
+    P: Parser<'parse, 'source>,
+    F: Fn(P::RawOutput) -> T,
+    F: 'parse,
+    T: ParserOutput,
+{
+    type Output = <T as ParserOutput>::UserType;
+    type RawOutput = T;
+    type Iter = MapRawParseIter<'parse, 'source, P, F>;
+
+    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+        MapRawParseIter {
+            iter: self.parser.parse_iter(source, start),
+            mapper: &self.mapper,
+        }
+    }
+}
+
+impl<'parse, 'source, P, F, T> ParseIter for MapRawParseIter<'parse, 'source, P, F>
+where
+    P: Parser<'parse, 'source>,
+    F: Fn(P::RawOutput) -> T,
+{
+    type RawOutput = T;
+
+    fn next_parse(&mut self) -> Option<Result<usize>> {
+        self.iter.next_parse()
+    }
+
+    fn take_data(&mut self) -> T {
+        (self.mapper)(self.iter.take_data())
+    }
+}
 
 pub struct MapParser<P, F> {
     parser: P,
@@ -532,6 +606,7 @@ where
     F: 'parse,
 {
     type Output = T;
+    type RawOutput = (T,);
     type Iter = MapParseIter<'parse, 'source, P, F>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
@@ -547,14 +622,15 @@ where
     P: Parser<'parse, 'source>,
     F: Fn(P::Output) -> T,
 {
-    type Output = T;
+    type RawOutput = (T,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         self.iter.next_parse()
     }
 
-    fn take_data(&mut self) -> Self::Output {
-        (self.mapper)(self.iter.take_data())
+    fn take_data(&mut self) -> (T,) {
+        let value = (self.mapper)(self.iter.take_data().into_user_type());
+        (value,)
     }
 }
 
@@ -581,6 +657,7 @@ where
     <T as FromStr>::Err: Display,
 {
     type Output = T;
+    type RawOutput = (T,);
     type Iter = FromStrParseIter<'source, T>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
@@ -593,7 +670,7 @@ where
     T: FromStrParse + Any,
     <T as FromStr>::Err: Display,
 {
-    type Output = T;
+    type RawOutput = (T,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         match *self {
@@ -627,11 +704,12 @@ where
         }
     }
 
-    fn take_data(&mut self) -> Self::Output {
-        match self {
+    fn take_data(&mut self) -> Self::RawOutput {
+        let v = match self {
             FromStrParseIter::Done { value } => value.take().unwrap(),
             _ => unreachable!("matching failed"),
-        }
+        };
+        (v,)
     }
 }
 
@@ -658,8 +736,8 @@ macro_rules! from_str_parse_impl {
     };
 }
 
-from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex = r"\A(?:0|[123456789][0123456789]+)");
-from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex = r"\A(?:0|-?[123456789][0123456789]+)");
+from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex = r"\A(?:0|[1-9][0-9]+)");
+from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex = r"\A(?:0|-?[1-9][0-9]+)");
 from_str_parse_impl!(bool, bool_regex = r"true|false");
 
 // --- Wrappers
@@ -683,14 +761,15 @@ pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail
 pub fn either<A, B>(
     left: impl for<'parse, 'source> Parser<'parse, 'source, Output = A> + 'static,
     right: impl for<'parse, 'source> Parser<'parse, 'source, Output = B> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Either<A, B>> {
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Either<A, B>, RawOutput = (Either<A, B>,)>
+{
     EitherParser { left, right }
 }
 
 pub fn alt<T>(
     left: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
     right: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static {
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T, RawOutput = (T,)> + 'static {
     EitherParser { left, right }.map(|out| match out {
         Either::Left(value) => value,
         Either::Right(value) => value,
@@ -719,8 +798,9 @@ pub fn repeat<Pattern, Sep>(
 
 pub fn opt<T>(
     pattern: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Option<T>> {
-    either(pattern, empty()).map(|e| match e {
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Option<T>, RawOutput = (Option<T>,)>
+{
+    either(pattern, empty()).map(|e: Either<T, ()>| match e {
         Either::Left(left) => Some(left),
         Either::Right(()) => None,
     })
@@ -742,6 +822,28 @@ pub fn sep_by<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern,
 
 pub fn lines<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, ExactParser> {
     repeat(pattern, exact("\n"), 0, None, true)
+}
+
+// Make sure that RawOutput is exactly `(T,)`.
+//
+// Parenthesizing an expression makes a semantic difference to prevent it from
+// disappearing in concatenation.
+//
+// Example 1: In `parser!("hello " (x: i32) => x)` the raw output type of `"hello "` is `()`
+// and it disappears when concatenated with `(x: i32)`. Now if we label `"hello"`
+// `parser!((a: "hello ") (x: i32) => (a, x))` we have to make sure that doesn't happen
+// so that we can build a pattern that matches both `a` and `x`.
+//
+// Example 2: `parser!((i32 " " i32) " " (x: i32))` should have the output type `((i32, i32), i32)`;
+// but conatenating the three top-level RawOutput types, `(i32, i32)` `()` and `(i32,)`, would
+// produce the flat `(i32, i32, i32)` instead.
+//
+// It turns out all we need is to ensure the `RawOutput` type of the parenthesized parser is
+// a singleton tuple type.
+pub fn parenthesize<T>(
+    pattern: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
+) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T, RawOutput = (T,)> {
+    pattern.map(|val| val)
 }
 
 #[cfg(test)]
