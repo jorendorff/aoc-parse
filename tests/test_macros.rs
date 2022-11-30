@@ -101,7 +101,6 @@ fn test_alpha() {
         type RawOutput = (char,);
         type Iter = AlphaIter<'source>;
         fn parse_iter(&'parse self, source: &'source str, start: usize) -> AlphaIter<'source> {
-            println!("parsing {source:?} at {start}");
             AlphaIter::Before(source, start)
         }
     }
@@ -115,8 +114,7 @@ fn test_alpha() {
                         *self = AlphaIter::Success(c);
                         Some(Ok(start + c.len_utf8()))
                     }
-                    q => {
-                        println!("nope, {q:?} is not alphabetic");
+                    _ => {
                         *self = AlphaIter::Error;
                         Some(Err(ParseError::new_expected(source, start, "letter")))
                     }
@@ -139,4 +137,60 @@ fn test_alpha() {
     assert_no_parse(&p, " hello");
     assert_parse_eq(&p, "hello", "hello");
     assert_parse_eq(&p, "京", "京");
+}
+
+mod ad2021 {
+    use aoc_parse::{parser, prelude::*};
+
+    #[test]
+    fn dec01() {
+        let input = "199\n200\n208\n210\n";
+        let p = parser!(lines(u64));
+        assert_eq!(p.parse(input).unwrap(), vec![199, 200, 208, 210]);
+    }
+
+    #[test]
+    fn dec02() {
+        let input = "forward 5
+down 5
+forward 8
+up 3
+down 8
+forward 2
+";
+
+        #[derive(Debug, PartialEq)]
+        enum Command {
+            Forward(u64),
+            Down(u64),
+            Up(u64),
+        }
+
+        let p = parser!(lines({
+            "down " (n: u64) => Command::Down(n),
+            "up " (n: u64) => Command::Up(n),
+            "forward " (n: u64) => Command::Forward(n),
+        }));
+
+        use Command::*;
+        assert_eq!(
+            p.parse(input).unwrap(),
+            vec![Forward(5), Down(5), Forward(8), Up(3), Down(8), Forward(2)],
+        );
+    }
+
+    #[test]
+    fn dec03() {
+        let input = "00100
+11110
+10110
+10111
+10101
+";
+        let p = parser!(lines(u32_bin));
+        assert_eq!(
+            p.parse(input).unwrap(),
+            vec![0b00100u32, 0b11110, 0b10110, 0b10111, 0b10101],
+        );
+    }
 }

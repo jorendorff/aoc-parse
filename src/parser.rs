@@ -1,7 +1,7 @@
 use std::{
     any::{self, Any},
     fmt::Display,
-    marker::PhantomData,
+    num::ParseIntError,
     str::FromStr,
 };
 
@@ -634,54 +634,63 @@ where
     }
 }
 
-// --- Default parsers for some types that implement FromStr
+// --- Parsers using Regex
 
-// Parser that uses a Regex to find the longest matching string, then FromStr
-// to convert that string to a Rust type. No backtracking.
-trait FromStrParse: FromStr + Any {
-    fn regex() -> &'static regex::Regex;
+pub struct RegexParser<T, E> {
+    regex: fn() -> &'static Regex,
+    parse_fn: fn(&str) -> std::result::Result<T, E>,
 }
 
-pub struct FromStrParser<T> {
-    phantom: PhantomData<fn() -> T>,
+pub enum RegexParseIter<'parse, 'source, T, E> {
+    Init {
+        source: &'source str,
+        start: usize,
+        parser: &'parse RegexParser<T, E>,
+    },
+    Done {
+        value: Option<T>,
+    },
 }
 
-pub enum FromStrParseIter<'source, T> {
-    Init { source: &'source str, start: usize },
-    Done { value: Option<T> },
-}
-
-impl<'parse, 'source, T> Parser<'parse, 'source> for FromStrParser<T>
+impl<'parse, 'source, T, E> Parser<'parse, 'source> for RegexParser<T, E>
 where
-    T: FromStrParse + 'source,
-    <T as FromStr>::Err: Display,
+    T: 'static,
+    E: Display + 'parse,
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter = FromStrParseIter<'source, T>;
+    type Iter = RegexParseIter<'parse, 'source, T, E>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
-        FromStrParseIter::Init { source, start }
+        RegexParseIter::Init {
+            source,
+            start,
+            parser: self,
+        }
     }
 }
 
-impl<'source, T> ParseIter for FromStrParseIter<'source, T>
+impl<'parse, 'source, T, E> ParseIter for RegexParseIter<'parse, 'source, T, E>
 where
-    T: FromStrParse + Any,
-    <T as FromStr>::Err: Display,
+    T: Any,
+    E: Display,
 {
     type RawOutput = (T,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         match *self {
-            FromStrParseIter::Init { source, start } => match T::regex().find(&source[start..]) {
-                Some(m) => match T::from_str(m.as_str()) {
+            RegexParseIter::Init {
+                source,
+                start,
+                parser,
+            } => match (parser.regex)().find(&source[start..]) {
+                Some(m) => match (parser.parse_fn)(m.as_str()) {
                     Ok(value) => {
-                        *self = FromStrParseIter::Done { value: Some(value) };
+                        *self = RegexParseIter::Done { value: Some(value) };
                         Some(Ok(start + m.end()))
                     }
                     Err(err) => {
-                        *self = FromStrParseIter::Done { value: None };
+                        *self = RegexParseIter::Done { value: None };
                         Some(Err(ParseError::new_from_str_failed(
                             source,
                             start,
@@ -692,7 +701,7 @@ where
                     }
                 },
                 None => {
-                    *self = FromStrParseIter::Done { value: None };
+                    *self = RegexParseIter::Done { value: None };
                     Some(Err(ParseError::new_expected(
                         source,
                         start,
@@ -706,39 +715,89 @@ where
 
     fn take_data(&mut self) -> Self::RawOutput {
         let v = match self {
-            FromStrParseIter::Done { value } => value.take().unwrap(),
+            RegexParseIter::Done { value } => value.take().unwrap(),
             _ => unreachable!("matching failed"),
         };
         (v,)
     }
 }
 
-macro_rules! from_str_parse_impl {
-    ($($ty:ident)+, $re_name:ident = $re:expr) => {
-        fn $re_name() -> &'static regex::Regex {
-            lazy_static! {
-                static ref RE: Regex = Regex::new($re).unwrap();
-            }
-            &RE
-        }
+// --- Default parsers for some types that implement FromStr
 
+macro_rules! regexes {
+    ( $( $name:ident = $re:expr ; )* ) => {
         $(
-            impl FromStrParse for $ty {
-                fn regex() -> &'static Regex {
-                    $re_name()
+            fn $name() -> &'static Regex {
+                lazy_static! {
+                    static ref RE: Regex = Regex::new($re).unwrap();
                 }
+                &RE
             }
+        )*
+    }
+}
 
+regexes! {
+    uint_regex = r"\A(0|[1-9][0-9]*)";
+    int_regex = r"\A(?:0|[+-]?[1-9][0-9]*)";
+    bool_regex = r"true|false";
+    uint_bin_regex = r"\A[01]+";
+    int_bin_regex = r"\A[+-]?[01]+";
+}
+
+macro_rules! from_str_parse_impl {
+    ( $( $ty:ident )+ , $re_name:ident) => {
+        $(
             #[allow(non_upper_case_globals)]
-            #[allow(dead_code)]
-            pub const $ty: FromStrParser<$ty> = FromStrParser { phantom: PhantomData };
+            pub const $ty: RegexParser<$ty, <$ty as FromStr>::Err> =
+                RegexParser {
+                    regex: $re_name,
+                    parse_fn: <$ty as FromStr>::from_str,
+                };
         )+
     };
 }
 
-from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex = r"\A(?:0|[1-9][0-9]+)");
-from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex = r"\A(?:0|-?[1-9][0-9]+)");
-from_str_parse_impl!(bool, bool_regex = r"true|false");
+from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex);
+from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
+from_str_parse_impl!(bool, bool_regex);
+
+macro_rules! from_str_radix_parsers {
+    ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* : $re_name:ident ) => {
+        $(
+            #[allow(non_upper_case_globals)]
+            pub const $bin: RegexParser<$ty, ParseIntError> = RegexParser {
+                regex: $re_name,
+                parse_fn: |s| $ty::from_str_radix(s, 2),
+            };
+
+            #[allow(non_upper_case_globals)]
+            pub const $hex: RegexParser<$ty, ParseIntError> = RegexParser {
+                regex: $re_name,
+                parse_fn: |s| $ty::from_str_radix(s, 16),
+            };
+
+        )*
+    }
+}
+
+from_str_radix_parsers!(
+    (u8, u8_bin, u8_hex),
+    (u16, u16_bin, u16_hex),
+    (u32, u32_bin, u32_hex),
+    (u64, u64_bin, u64_hex),
+    (u128, u128_bin, u128_hex),
+    (usize, usize_bin, usize_hex): uint_bin_regex
+);
+
+from_str_radix_parsers!(
+    (i8, i8_bin, i8_hex),
+    (i16, i16_bin, i16_hex),
+    (i32, i32_bin, i32_hex),
+    (i64, i64_bin, i64_hex),
+    (i128, i128_bin, i128_hex),
+    (isize, isize_bin, isize_hex): int_bin_regex
+);
 
 // --- Wrappers
 
@@ -939,5 +998,13 @@ mod tests {
         assert_parse_eq(&p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
 
         assert_no_parse(&u8, "256");
+
+        assert_parse_eq(&u8, "255", 255u8);
+        assert_parse_eq(&sequence(exact("#"), u32), "#100", 100u32);
+        assert_parse_eq(
+            &sequence(exact("forward "), u64).map(|a| a),
+            "forward 1234",
+            1234u64,
+        );
     }
 }
