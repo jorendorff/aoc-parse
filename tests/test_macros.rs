@@ -151,7 +151,8 @@ mod ad2021 {
 
     #[test]
     fn dec02() {
-        let input = "forward 5
+        let input = "\
+forward 5
 down 5
 forward 8
 up 3
@@ -181,7 +182,8 @@ forward 2
 
     #[test]
     fn dec03() {
-        let input = "00100
+        let input = "\
+00100
 11110
 10110
 10111
@@ -191,6 +193,57 @@ forward 2
         assert_eq!(
             p.parse(input).unwrap(),
             vec![0b00100u32, 0b11110, 0b10110, 0b10111, 0b10101],
+        );
+    }
+
+    #[test]
+    fn dec05() {
+        let input = "\
+0,9 -> 5,9
+8,0 -> 0,8
+9,4 -> 3,4
+2,2 -> 2,1
+";
+
+        #[derive(Debug, PartialEq)]
+        struct Line {
+            x1: usize,
+            y1: usize,
+            x2: usize,
+            y2: usize,
+        }
+
+        let p = parser!(
+            lines(
+                (x1: usize) "," (y1: usize) " -> " (x2: usize) "," (y2: usize)
+                    => Line { x1, y1, x2, y2 }
+            )
+        );
+        assert_eq!(
+            p.parse(input).unwrap(),
+            vec![
+                Line { x1: 0, y1: 9, x2: 5, y2: 9 },
+                Line { x1: 8, y1: 0, x2: 0, y2: 8 },
+                Line { x1: 9, y1: 4, x2: 3, y2: 4 },
+                Line { x1: 2, y1: 2, x2: 2, y2: 1 },
+            ],
+        );
+    }
+
+    #[test]
+    fn dec06() {
+        let input = "3,4,3,1,2\n";
+        let p = parser!(repeat_sep(usize, ",") "\n");
+        assert_eq!(p.parse(input).unwrap(), vec![3usize, 4, 3, 1, 2]);
+    }
+
+    #[test]
+    fn dec07() {
+        let input = "16,1,2,0,4,2,7,1,2,14\n";
+        let p = parser!(repeat_sep(i64, ",") "\n");
+        assert_eq!(
+            p.parse(input).unwrap(),
+            vec![16, 1, 2, 0, 4, 2, 7, 1, 2, 14],
         );
     }
 }

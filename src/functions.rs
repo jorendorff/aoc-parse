@@ -32,4 +32,18 @@ where
     }
 }
 
+pub struct repeat_sep;
+
+impl<'parse, 'source, T, U> ParserFunction<(T, U)> for repeat_sep
+where
+    T: Parser<'parse, 'source>,
+    U: Parser<'parse, 'source>,
+{
+    type Output = RepeatParser<T, U>;
+
+    fn call_parser_function(&self, (parser, sep): (T, U)) -> Self::Output {
+        crate::parser::repeat(parser, sep, 0, None, false)
+    }
+}
+
 // TODO: try implementing the trait for plain `fn` types.

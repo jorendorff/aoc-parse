@@ -259,7 +259,7 @@ macro_rules! parser {
             [ $( $tail )* ]
             [ ]
             (
-                $( $arg:expr , )*
+                $( $arg , )*
                 $crate::parser!(@seq _ [ $( $seq )* ] [ ] [ ]) ,
             )
         )
@@ -276,7 +276,7 @@ macro_rules! parser {
     };
 
     // end of argument list, after trailing comma or empty
-    (@args [] [ ] $out:expr) => {
+    (@args [] [] $out:expr) => {
         $out
     };
 
