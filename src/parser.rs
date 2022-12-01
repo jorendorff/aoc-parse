@@ -197,6 +197,7 @@ pub trait ParseIter {
 
 // --- Parser that successfully matches the empty string
 
+#[derive(Clone, Copy)]
 pub struct EmptyParser;
 
 impl<'parse, 'source> Parser<'parse, 'source> for EmptyParser {
@@ -265,8 +266,9 @@ impl<'source> ParseIter for NeverParseIter<'source> {
 
 // --- Parser that matches a particular exact string
 
+#[derive(Clone, Copy)]
 pub struct ExactParser {
-    s: String,
+    s: &'static str,
 }
 
 pub struct ExactParseIter<'parse, 'source> {
@@ -318,6 +320,7 @@ impl<'parse, 'source> ParseIter for ExactParseIter<'parse, 'source> {
 
 // --- Matching patterns in sequence
 
+#[derive(Clone, Copy)]
 pub struct SequenceParser<Head, Tail> {
     head: Head,
     tail: Tail,
@@ -421,6 +424,7 @@ pub enum Either<A, B> {
     Right(B),
 }
 
+#[derive(Copy, Clone)]
 pub struct EitherParser<A, B> {
     left: A,
     right: B,
@@ -508,6 +512,7 @@ where
 
 // --- Parsing a repeated pattern
 
+#[derive(Clone, Copy)]
 pub struct RepeatParser<Pattern, Sep> {
     pattern: Pattern,
     min: usize,
@@ -696,6 +701,7 @@ where
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct MapParser<P, F> {
     parser: P,
     mapper: F,
@@ -750,6 +756,18 @@ pub struct RegexParser<T, E> {
     regex: fn() -> &'static Regex,
     parse_fn: fn(&str) -> std::result::Result<T, E>,
 }
+
+// Manual Clone impl because `#[derive(Clone)]` is buggy in this case.
+impl<T, E> Clone for RegexParser<T, E> {
+    fn clone(&self) -> Self {
+        RegexParser {
+            regex: self.regex,
+            parse_fn: self.parse_fn,
+        }
+    }
+}
+
+impl<T, E> Copy for RegexParser<T, E> {}
 
 pub enum RegexParseIter<'parse, 'source, T, E> {
     Init {
@@ -915,8 +933,8 @@ pub fn empty() -> EmptyParser {
     EmptyParser
 }
 
-pub fn exact(s: &str) -> ExactParser {
-    ExactParser { s: s.to_string() }
+pub fn exact(s: &'static str) -> ExactParser {
+    ExactParser { s }
 }
 
 pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail> {
@@ -927,11 +945,7 @@ pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail
 //     parsers.product()
 // }
 
-pub fn either<A, B>(
-    left: impl for<'parse, 'source> Parser<'parse, 'source, Output = A> + 'static,
-    right: impl for<'parse, 'source> Parser<'parse, 'source, Output = B> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = Either<A, B>, RawOutput = (Either<A, B>,)>
-{
+pub fn either<A, B>(left: A, right: B) -> EitherParser<A, B> {
     EitherParser { left, right }
 }
 
@@ -1009,9 +1023,10 @@ pub fn lines<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, ExactParser> {
 //
 // It turns out all we need is to ensure the `RawOutput` type of the parenthesized parser is
 // a singleton tuple type.
-pub fn parenthesize<T>(
-    pattern: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T, RawOutput = (T,)> {
+pub fn parenthesize<A, T>(pattern: A) -> MapParser<A, fn(T) -> T>
+where
+    A: for<'parse, 'source> Parser<'parse, 'source, Output = T>,
+{
     pattern.map(|val| val)
 }
 
