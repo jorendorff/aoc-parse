@@ -64,6 +64,35 @@ pub trait Parser<'parse, 'source> {
     }
 }
 
+/// Parse the given puzzle input supplied by `#[aoc_generator]`.
+///
+/// This function is like `parser.parse(puzzle_input)` except that
+/// `#[aoc_generator]` unfortunately [strips off trailing newlines][bad]. This
+/// function therefore adds a newline at the end before parsing.
+///
+/// # Example
+///
+/// ```no_run
+/// use aoc_runner_derive::*;
+/// use aoc_parse::{parser, prelude::*};
+///
+/// #[aoc_generator(day1)]
+/// fn parse_input(text: &str) -> anyhow::Result<Vec<Vec<u64>>> {
+///     let p = parser!(repeat_sep(lines(u64), "\n"));
+///     aoc_parse(text, p)
+/// }
+/// ```
+///
+/// [bad]: https://github.com/gobanos/aoc-runner/blob/master/src/lib.rs#L17
+pub fn aoc_parse<P, T, E>(puzzle_input: &str, parser: P) -> std::result::Result<T, E>
+where
+    E: From<ParseError>,
+    P: for<'p, 's> Parser<'p, 's, Output = T>,
+{
+    let p = puzzle_input.to_string() + "\n";
+    Ok(parser.parse(&p)?)
+}
+
 /// A parser in action. Some parsers can match in several different ways (for
 /// example, in `foo* bar` backtracking is accomplished by `foo*` first
 /// matching as much as possible, then backing off one match at a time), so
