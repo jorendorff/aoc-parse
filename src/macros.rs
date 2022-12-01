@@ -26,38 +26,41 @@ pub use crate::parser::{alt, empty, exact, lines, opt, parenthesize, plus, seque
 // - struct fields (actually the same thing)
 // - string label of (used by conversion from Variant to enums)
 
+/// Macro that creates a parser for a given pattern.
+///
+/// See [the top-level documentation][lib] for more about how to write patterns.
+///
+/// Here's a formal syntax for patterns:
+///
 /// ```text
+/// pattern ::= expr
+///
+/// expr ::= label
+///   | label "=>" rust_expr    -- custom conversion
+///
+/// label ::= cast
+///   | ident ":" seq           -- labeled subpattern
+///
+/// seq ::= term
+///   | seq term                -- concatenated subpatterns
+///
+/// term ::= prim
+///   | term "*"                -- optional repeating
+///   | term "+"                -- repeating
+///   | term "?"                -- optional
+///
+/// prim ::= "(" expr ")"
+///   | ident "(" expr,* ")"    -- function call
+///   | ident                   -- named parser (when not followed by `(`)
+///   | literal                 -- exact string
+///   | "{" expr,* "}"          -- one-of syntax
+///
 /// ident ::= a Rust identifier
 /// expr ::= a Rust expression
 /// literal ::= a Rust literal
-///
-/// parser ::= rule* expr
-///
-/// rule ::= "rule" ident "=" expr ";"
-///
-/// expr ::= label
-///   | label "=>" rust_expr        => Map($1, |...pattern of $1...| $2)
-///
-/// label ::= cast
-///   | ident ":" cast              => Label($1, $2)
-///
-/// cast ::= seq
-///   | seq "as" ty                 => TryMap($1, |x| $2::try_from(x))
-///
-/// seq ::= term
-///   | seq term                    => Sequence($1, $2)
-///
-/// term ::= prim
-///   | term "*"                    => Repeat($1, 0)
-///   | term "+"                    => Repeat($1, 1)
-///   | term "?"                    => Optional($1)
-///
-/// prim ::= "(" expr ")"
-///   | ident "(" expr,* ")"        => Call($1, $2)
-///   | ident                       => NamedRule($1)  -- when not followed by "("
-///   | literal                     => Literal($1)
-///   | "{" expr,* "}"              => OneOf($1)
 /// ```
+///
+/// [lib]: crate#patterns
 #[macro_export]
 macro_rules! parser {
     // parser!(@seq label [expr] [stack] [patterns])
