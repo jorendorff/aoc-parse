@@ -340,14 +340,6 @@ macro_rules! parser {
         ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
-    // parser!(rule ...) - Rule-expression, `parser ::= rule* expr`
-    (rule $name:ident = $($body:tt)* ; $($tail:tt)*) => {
-        {
-            let $name = check_parser($crate::parser!($($body)*));
-            $crate::parser!($($tail)*)
-        }
-    };
-
     // parser!(ident : ...) - Labeled expression, `label ::= ident : cast`
     ($label:ident : $($tail:tt)*) => {
         $crate::parser!(@seq $label [ $($tail)* ] [ ] [ ])
