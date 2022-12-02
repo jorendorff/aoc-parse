@@ -1,5 +1,5 @@
 use crate::{
-    parser::{self, EitherParser, EmptyParser, NeverParser, SequenceParser},
+    parsers::{self, EitherParser, EmptyParser, NeverParser, SequenceParser},
     Parser,
 };
 
@@ -156,12 +156,12 @@ where
 
     fn seq(self) -> SequenceParser<A, B> {
         let (a, b) = self;
-        parser::sequence(a, b)
+        parsers::sequence(a, b)
     }
 
     fn alt(self) -> EitherParser<A, B> {
         todo!("what a disaster")
         //let (a, b) = self;
-        //parser::either(a, b)
+        //parsers::either(a, b)
     }
 }

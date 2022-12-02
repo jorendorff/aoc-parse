@@ -1,8 +1,4 @@
-//use crate::matches::Match;
-//use crate::parser::{self, Parser};
-//use crate::ParseError;
-
-pub use crate::parser::{alt, empty, exact, lines, opt, parenthesize, plus, sequence, star};
+pub use crate::parsers::{alt, empty, exact, lines, opt, parenthesize, plus, sequence, star};
 
 // Output type of a parser
 // `e => rustexpr` => type of the rustexpr
