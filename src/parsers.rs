@@ -188,7 +188,7 @@ mod repeat;
 mod sequence;
 
 pub use self::regex::RegexParser;
-pub use either::{either, Either, EitherParser};
+pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use exact::{exact, ExactParser};
 pub use map::{MapParser, MapRawParser};
@@ -203,16 +203,6 @@ pub use repeat::{repeat, RepeatParser};
 pub use sequence::{sequence, SequenceParser};
 
 // --- Wrappers
-
-pub fn alt<T>(
-    left: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
-    right: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,
-) -> impl for<'parse, 'source> Parser<'parse, 'source, Output = T, RawOutput = (T,)> + 'static {
-    either(left, right).map(|out| match out {
-        Either::Left(value) => value,
-        Either::Right(value) => value,
-    })
-}
 
 pub fn opt<T>(
     pattern: impl for<'parse, 'source> Parser<'parse, 'source, Output = T> + 'static,

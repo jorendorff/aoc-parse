@@ -1,6 +1,8 @@
 //! Alternation.
 
-use crate::{error::Result, types::ParserOutput, ParseError, ParseIter, Parser};
+use crate::{
+    error::Result, parsers::MapParser, types::ParserOutput, ParseError, ParseIter, Parser,
+};
 
 #[derive(Debug)]
 pub enum Either<A, B> {
@@ -96,4 +98,17 @@ where
 
 pub fn either<A, B>(left: A, right: B) -> EitherParser<A, B> {
     EitherParser { left, right }
+}
+
+pub type AltParser<A, B, T> = MapParser<EitherParser<A, B>, fn(Either<T, T>) -> T>;
+
+pub fn alt<A, B, T>(left: A, right: B) -> AltParser<A, B, T>
+where
+    A: for<'parse, 'source> Parser<'parse, 'source, Output = T>,
+    B: for<'parse, 'source> Parser<'parse, 'source, Output = T>,
+{
+    either(left, right).map(|out| match out {
+        Either::Left(value) => value,
+        Either::Right(value) => value,
+    })
 }
