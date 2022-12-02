@@ -6,6 +6,7 @@ description = "A little library for parsing your Advent of Code puzzle input"
 repository = "https://github.com/jorendorff/advent-of-code"
 homepage = "https://github.com/jorendorff/advent-of-code/tree/main/aoc-parse"
 license = "MIT"
+keywords = ["aoc", "parse", "puzzle", "parser", "advent"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
