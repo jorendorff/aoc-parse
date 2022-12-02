@@ -92,7 +92,6 @@ Here are the pieces that you can use in a pattern:
     defined on the previous line.
 
     ```
-    # use aoc_parse::{parser, prelude::*};
     let fraction = parser!(i64 "/" u64);
     let amount = parser!(fraction " tsp");
 
@@ -147,15 +146,6 @@ Custom conversion:
     The patterns we need are:
 
     ```
-    # use aoc_parse::{parser, prelude::*};
-    # #[derive(Debug, PartialEq)]
-    # struct Point(i64, i64);
-    #
-    # #[derive(Debug, PartialEq)]
-    # struct Line {
-    #     p1: Point,
-    #     p2: Point,
-    # }
     let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
     let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
 
