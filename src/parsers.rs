@@ -184,6 +184,7 @@ pub trait ParseIter {
 mod either;
 mod empty;
 mod exact;
+mod lines;
 mod map;
 mod never;
 mod primitive;
@@ -195,6 +196,7 @@ pub use self::regex::RegexParser;
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use exact::{exact, ExactParser};
+pub use lines::{line, lines, LineParser};
 pub use map::{MapParser, MapRawParser};
 pub use never::NeverParser;
 pub use primitive::{
@@ -203,7 +205,7 @@ pub use primitive::{
     u16_bin, u16_hex, u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, usize,
     usize_bin, usize_hex,
 };
-pub use repeat::{repeat, RepeatParser};
+pub use repeat::{plus, repeat, sep_by, star, RepeatParser};
 pub use sequence::{sequence, SequenceParser};
 
 // --- Wrappers
@@ -216,24 +218,6 @@ pub fn opt<T>(
         Either::Left(left) => Some(left),
         Either::Right(()) => None,
     })
-}
-
-// Kleene *
-pub fn star<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
-    repeat(pattern, empty(), 0, None, false)
-}
-
-// Kleene +
-pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
-    repeat(pattern, empty(), 1, None, false)
-}
-
-pub fn sep_by<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
-    repeat(pattern, sep, 0, None, false)
-}
-
-pub fn lines<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, ExactParser> {
-    repeat(pattern, exact("\n"), 0, None, true)
 }
 
 // Make sure that RawOutput is exactly `(T,)`.

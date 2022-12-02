@@ -6,7 +6,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    parsers::{ExactParser, RepeatParser},
+    parsers::{self, EmptyParser, LineParser, RepeatParser},
     Parser,
 };
 
@@ -25,10 +25,10 @@ impl<'parse, 'source, T> ParserFunction<(T,)> for lines
 where
     T: Parser<'parse, 'source>,
 {
-    type Output = RepeatParser<T, ExactParser>;
+    type Output = RepeatParser<LineParser<T>, EmptyParser>;
 
     fn call_parser_function(&self, (line_parser,): (T,)) -> Self::Output {
-        crate::parsers::lines(line_parser)
+        parsers::lines(line_parser)
     }
 }
 
@@ -42,12 +42,12 @@ where
     type Output = RepeatParser<T, U>;
 
     fn call_parser_function(&self, (parser, sep): (T, U)) -> Self::Output {
-        crate::parsers::repeat(parser, sep, 0, None, false)
+        parsers::repeat(parser, sep, 0, None, false)
     }
 }
 
-// pub struct line;
-//
+pub struct line;
+
 // impl ParserFunction<()> for line {
 //     type Output = RegexParser<String, Never>;
 //
@@ -58,16 +58,16 @@ where
 //         }
 //     }
 // }
-//
-// impl<'parse, 'source, T> ParserFunction<(T,)> for line
-// where
-//     T: Parser<'parse, 'source>,
-// {
-//     type Output = SequenceParser<T, ExactParser>;
-//
-//     fn call_parser_function(&self, (parser,): (T,)) -> Self::Output {
-//         crate::parsers::sequence(parser, crate::parsers::exact("\n"))
-//     }
-// }
+
+impl<'parse, 'source, T> ParserFunction<(T,)> for line
+where
+    T: Parser<'parse, 'source>,
+{
+    type Output = LineParser<T>;
+
+    fn call_parser_function(&self, (parser,): (T,)) -> Self::Output {
+        parsers::line(parser)
+    }
+}
 
 // TODO: try implementing the trait for plain `fn` types.

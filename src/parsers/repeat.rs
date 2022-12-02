@@ -1,6 +1,11 @@
 //! Parsing a repeated pattern.
 
-use crate::{error::Result, types::ParserOutput, ParseError, ParseIter, Parser};
+use crate::{
+    error::Result,
+    parsers::{empty, EmptyParser},
+    types::ParserOutput,
+    ParseError, ParseIter, Parser,
+};
 
 #[derive(Clone, Copy)]
 pub struct RepeatParser<Pattern, Sep> {
@@ -155,4 +160,18 @@ pub fn repeat<Pattern, Sep>(
         sep,
         sep_is_terminator,
     }
+}
+
+// Kleene *
+pub fn star<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), 0, None, false)
+}
+
+// Kleene +
+pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), 1, None, false)
+}
+
+pub fn sep_by<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
+    repeat(pattern, sep, 0, None, false)
 }

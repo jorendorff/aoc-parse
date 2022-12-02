@@ -42,6 +42,10 @@ impl std::error::Error for ParseError {}
 enum ParseErrorReason {
     #[error("extra unparsed text after match")]
     Extra,
+    #[error("line() can't match here because this is not at the start of a line")]
+    NotAtLineStart,
+    #[error("line(pattern) matched part of the line, but not all of it")]
+    LineExtra,
     #[error("expected {0:?}")]
     Expected(String),
     #[error("failed to parse {input:?} as type {type_name}: {message}")]
@@ -60,6 +64,22 @@ impl ParseError {
             source: source.to_string(),
             location,
             reason: ParseErrorReason::Extra,
+        }
+    }
+
+    pub fn new_bad_line_start(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::NotAtLineStart,
+        }
+    }
+
+    pub fn new_line_extra(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::LineExtra,
         }
     }
 
