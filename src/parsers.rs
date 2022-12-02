@@ -119,7 +119,8 @@ where
 ///
 /// This function is like `parser.parse(puzzle_input)` except that
 /// `#[aoc_generator]` unfortunately [strips off trailing newlines][bad]. This
-/// function therefore adds a newline at the end before parsing.
+/// function therefore checks to see if the last line is missing its final `\n`
+/// and, if so, re-adds it before parsing.
 ///
 /// # Example
 ///
@@ -140,7 +141,10 @@ where
     E: From<ParseError>,
     P: for<'p, 's> Parser<'p, 's, Output = T>,
 {
-    let p = puzzle_input.to_string() + "\n";
+    let mut p = puzzle_input.to_string();
+    if !p.ends_with('\n') {
+        p.push('\n');
+    }
     Ok(parser.parse(&p)?)
 }
 
