@@ -100,7 +100,9 @@ mod names_and_scopes {
 
 #[test]
 fn test_alpha() {
-    use aoc_parse::{ParseError, ParseIter, Parser, Result};
+    use aoc_parse::{ParseError, ParseIter, Parser};
+
+    type Result<T, E = ParseError> = std::result::Result<T, E>;
 
     #[allow(non_camel_case_types)]
     struct alpha;

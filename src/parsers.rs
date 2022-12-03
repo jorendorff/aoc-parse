@@ -1,4 +1,4 @@
-use crate::{types::ParserOutput, ParseError, Result};
+use crate::{ParseError, ParserOutput, Result};
 
 /// Trait implemented by all parsers.
 ///

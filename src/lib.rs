@@ -183,8 +183,10 @@ pub mod macros;
 mod parsers;
 mod types;
 
-pub use error::{ParseError, Result};
-pub use parsers::{empty, exact, plus, repeat, star, ParseIter, Parser};
+pub use error::ParseError;
+use error::Result;
+pub use parsers::{ParseIter, Parser};
+use types::ParserOutput;
 
 pub mod prelude {
     pub use crate::functions::{line, lines, repeat_sep};
