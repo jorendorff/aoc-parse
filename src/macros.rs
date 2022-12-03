@@ -79,8 +79,10 @@ macro_rules! parser {
 
     // Mapper at the end of a pattern that is not labeled, `expr ::= label => rust_expr`.
     (@seq _ [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
-        $crate::parser!(@seq _ [] [ $($stack)* ] [ $($pats ,)* ])
-            .map(| ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper)
+        $crate::Parser::map(
+            $crate::parser!(@seq _ [] [ $($stack)* ] [ $($pats ,)* ]) ,
+            | ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
+        )
     };
 
     // Mapper at the end of a pattern that is labeled.
@@ -89,8 +91,10 @@ macro_rules! parser {
     // available as `foo` in the inner mapper. Then the result of the inner
     // mapper is named `foo` in the outer mapper.
     (@seq $label:ident [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
-        $crate::parser!(@seq $label [] [ $($stack)* ] [ $($pats ,)* ])
-            .map(| $label @ ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper)
+        $crate::Parser::map(
+            $crate::parser!(@seq $label [] [ $($stack)* ] [ $($pats ,)* ]) ,
+            | $label @ ( $crate::parser!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
+        )
     };
 
     // Recognize `as` keyword, not yet supported.

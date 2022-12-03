@@ -84,6 +84,20 @@ fn test_macros() {
     );
 }
 
+mod names_and_scopes {
+    use super::assert_parse_eq;
+
+    // `=>` should work even if `Parser` has not been imported.
+    #[test]
+    fn test_map_syntax() {
+        use aoc_parse::{parser, prelude::u64};
+
+        let p = parser!((a: u64) " " (b: u64) => 100 * a + b);
+
+        assert_parse_eq(&p, "31 34", 3134);
+    }
+}
+
 #[test]
 fn test_alpha() {
     use aoc_parse::{ParseError, ParseIter, Parser, Result};
