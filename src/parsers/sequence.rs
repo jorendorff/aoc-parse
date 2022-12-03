@@ -2,7 +2,7 @@
 
 use crate::{
     error::Result,
-    types::{ParserOutput, TupleConcat},
+    types::{ParserOutput, RawOutputConcat},
     ParseError, ParseIter, Parser,
 };
 
@@ -29,11 +29,11 @@ impl<'parse, 'source, Head, Tail> Parser<'parse, 'source> for SequenceParser<Hea
 where
     Head: Parser<'parse, 'source> + 'parse,
     Tail: Parser<'parse, 'source> + 'parse,
-    Head::RawOutput: TupleConcat<Tail::RawOutput>,
+    Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
     type Output =
-        <<Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output as ParserOutput>::UserType;
-    type RawOutput = <Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output;
+        <<Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output as ParserOutput>::UserType;
+    type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
     type Iter = SequenceParseIter<'parse, 'source, Head, Tail>;
 
     fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
@@ -52,9 +52,9 @@ impl<'parse, 'source, Head, Tail> ParseIter for SequenceParseIter<'parse, 'sourc
 where
     Head: Parser<'parse, 'source>,
     Tail: Parser<'parse, 'source>,
-    Head::RawOutput: TupleConcat<Tail::RawOutput>,
+    Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
-    type RawOutput = <Head::RawOutput as TupleConcat<Tail::RawOutput>>::Output;
+    type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         let mut foremost_error: Option<ParseError> = None;
