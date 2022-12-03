@@ -57,7 +57,7 @@
 //!
 //! Here are the pieces that you can use in a pattern:
 //!
-//! *   `i8`, `i16`, `i32`, `i64`, `i128`, `isize`: These match an integer,
+//! *   `i8`, `i16`, `i32`, `i64`, `i128`, `isize` - These match an integer,
 //!     written out using decimal digits, with an optional `+` or `-` sign
 //!     at the start, like `0` or `-11474`.
 //!
@@ -65,7 +65,7 @@
 //!     type you chose. For example, `parser!(i8).parse("1000")` is an error.
 //!     (It matches the string, but fails during the "convert" phase.)
 //!
-//! *   `u8`, `u16`, `u32`, `u64`, `u128`, `usize`: The same, but without
+//! *   `u8`, `u16`, `u32`, `u64`, `u128`, `usize` - The same, but without
 //!     the sign.
 //!
 //!
