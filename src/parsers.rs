@@ -196,7 +196,9 @@ pub use self::regex::RegexParser;
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use exact::{exact, ExactParser};
-pub use lines::{line, lines, LineParser};
+pub use lines::{
+    line, line_str, lines, lines_str, LineAsStringParser, LineParser, LinesAsStringsParser,
+};
 pub use map::{MapParser, MapRawParser};
 pub use never::NeverParser;
 pub use primitive::{

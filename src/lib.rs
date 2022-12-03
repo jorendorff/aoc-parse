@@ -155,10 +155,10 @@
 //!     #     p2: Point,
 //!     # }
 //!     let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
-//!     let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
+//!     let line_parser = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
 //!
 //!     assert_eq!(
-//!         line.parse("(3,66)-(27,8)").unwrap(),
+//!         line_parser.parse("(3,66)-(27,8)").unwrap(),
 //!         Line { p1: Point(3, 66), p2: Point(27, 8) },
 //!     );
 //!     ```
@@ -187,7 +187,7 @@ pub use error::{ParseError, Result};
 pub use parsers::{empty, exact, plus, repeat, star, ParseIter, Parser};
 
 pub mod prelude {
-    pub use crate::functions::{lines, repeat_sep};
+    pub use crate::functions::{line, lines, repeat_sep};
     pub use crate::parsers::{
         aoc_parse, bool, i128, i128_bin, i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex,
         i64, i64_bin, i64_hex, i8, i8_bin, i8_hex, isize, isize_bin, isize_hex, sep_by, u128,

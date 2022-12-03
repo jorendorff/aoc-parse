@@ -2,7 +2,7 @@
 
 use crate::{
     error::Result,
-    parsers::{star, EmptyParser, RepeatParser},
+    parsers::{star, EmptyParser, RegexParser, RepeatParser},
     types::ParserOutput,
     ParseError, ParseIter, Parser,
 };
@@ -111,8 +111,27 @@ where
     }
 }
 
+pub type LineAsStringParser = LineParser<RegexParser<String, ParseError>>;
+
+pub fn line_str() -> LineAsStringParser {
+    line(RegexParser {
+        regex: crate::parsers::primitive::line_regex,
+        parse_fn: |s| Ok(s.to_string()),
+    })
+}
+
 pub fn line<P>(parser: P) -> LineParser<P> {
     LineParser { parser }
+}
+
+pub type LinesAsStringsParser =
+    RepeatParser<LineParser<RegexParser<String, ParseError>>, EmptyParser>;
+
+pub fn lines_str() -> LinesAsStringsParser {
+    lines(RegexParser {
+        regex: crate::parsers::primitive::line_regex,
+        parse_fn: |s| Ok(s.to_string()),
+    })
 }
 
 pub fn lines<P>(parser: P) -> RepeatParser<LineParser<P>, EmptyParser> {

@@ -6,7 +6,9 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    parsers::{self, EmptyParser, LineParser, RepeatParser},
+    parsers::{
+        self, EmptyParser, LineAsStringParser, LineParser, LinesAsStringsParser, RepeatParser,
+    },
     Parser,
 };
 
@@ -16,11 +18,39 @@ pub trait ParserFunction<Args> {
     fn call_parser_function(&self, args: Args) -> Self::Output;
 }
 
-// `lines` needs to be something other than a plain Rust function, because the
-// goal is to have it support a variable number of arguments.
+// `line` needs to be something other than a plain Rust function, because it
+// supports either 1 or 0 arguments.
+pub struct line;
+
+impl ParserFunction<()> for line {
+    type Output = LineAsStringParser;
+
+    fn call_parser_function(&self, (): ()) -> Self::Output {
+        parsers::line_str()
+    }
+}
+
+impl<'parse, 'source, T> ParserFunction<(T,)> for line
+where
+    T: Parser<'parse, 'source>,
+{
+    type Output = LineParser<T>;
+
+    fn call_parser_function(&self, (line_parser,): (T,)) -> Self::Output {
+        parsers::line(line_parser)
+    }
+}
+
 pub struct lines;
 
-// Just take one argument for now.
+impl ParserFunction<()> for lines {
+    type Output = LinesAsStringsParser;
+
+    fn call_parser_function(&self, (): ()) -> Self::Output {
+        parsers::lines_str()
+    }
+}
+
 impl<'parse, 'source, T> ParserFunction<(T,)> for lines
 where
     T: Parser<'parse, 'source>,
@@ -43,30 +73,6 @@ where
 
     fn call_parser_function(&self, (parser, sep): (T, U)) -> Self::Output {
         parsers::repeat(parser, sep, 0, None, false)
-    }
-}
-
-pub struct line;
-
-// impl ParserFunction<()> for line {
-//     type Output = RegexParser<String, Never>;
-//
-//     fn call_parser_function(&self, (): ()) -> Self::Output {
-//         RegexParser {
-//             regex: crate::parsers::line_regex,
-//             parse_fn: |s| Ok(s.to_string()),
-//         }
-//     }
-// }
-
-impl<'parse, 'source, T> ParserFunction<(T,)> for line
-where
-    T: Parser<'parse, 'source>,
-{
-    type Output = LineParser<T>;
-
-    fn call_parser_function(&self, (parser,): (T,)) -> Self::Output {
-        parsers::line(parser)
     }
 }
 
