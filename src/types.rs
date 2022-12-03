@@ -1,8 +1,3 @@
-use crate::{
-    parsers::{self, EitherParser, EmptyParser, NeverParser, SequenceParser},
-    Parser,
-};
-
 // --- TupleConcat
 
 pub trait TupleConcat<Tail> {
@@ -11,47 +6,47 @@ pub trait TupleConcat<Tail> {
     fn concat(self, tail: Tail) -> Self::Output;
 }
 
-macro_rules! impl_tuple_concat_helper {
-    (( $($left:ident ,)* ) ,) => {
-        impl< $($left ,)* > TupleConcat<()> for ( $($left ,)* ) {
-            type Output = Self;
+macro_rules! impl_tuple_concat_item {
+    ( ( $( $t1:ident , )* ) ( $( $t2:ident , )* ) ) => {
+        impl< $( $t1 , )* $( $t2 , )* > TupleConcat<( $( $t2 , )* )> for ( $( $t1 , )* ) {
+            type Output = ( $( $t1 , )* $( $t2 , )* );
 
-            fn concat(self, _tail: ()) -> Self {
-                self
+            #[allow(non_snake_case)]
+            fn concat(self, ( $( $t2 , )* ) : ( $( $t2 , )* )) -> Self::Output {
+                let ( $( $t1 , )* ) = self;
+                let combined = ( $( $t1 , )* $( $t2 , )* );
+                combined
             }
         }
     };
-    (( $($left:ident ,)* ) , $first:ident $($rest:ident)*) => {
-        #[allow(non_snake_case)]
-        impl<$($left ,)* $first, $($rest ,)*> TupleConcat<($first, $($rest ,)*)> for ( $($left ,)* ) {
-            type Output = ($($left ,)* $first, $($rest ,)*);
-            fn concat(self, ($first, $($rest ,)*): ($first, $($rest ,)*)) -> Self::Output {
-                let ( $($left ,)* ) = self;
-                ($($left ,)* $first, $($rest ,)*)
-            }
-        }
-        impl_tuple_concat_helper!( ( $($left ,)* ) , $($rest)* );
+}
+
+macro_rules! impl_tuple_concat_helper {
+    ( [] ( $( $t1:ident , )* ) ( $( $t2:ident , )* ) ) => {
+        impl_tuple_concat_item!( ( $( $t1 , )* ) ( $( $t2 , )* ) );
+    };
+    ( [ $next:ident $( $rest:ident )* ] ( $( $t1:ident , )* ) ( $( $t2:ident , )* ) ) => {
+        impl_tuple_concat_item!( ( $( $t1 , )* ) ( $( $t2 , )* ) );
+        impl_tuple_concat_helper!( [ $( $rest )* ] ( $( $t1 , )* ) ( $( $t2 , )* $next , ) );
     };
 }
 
 macro_rules! impl_tuple_concat {
-    ( , $($right:ident)* ) => {
-        impl_tuple_concat_helper!((), $($right)*);
+    ( [ ] ( $( $t1:ident , )* ) ) => {
+        impl_tuple_concat_helper!( [] ( $( $t1 ,)* ) ( ) );
     };
-    ($first:ident $($rest:ident)* , $($right:ident)*) => {
-        impl_tuple_concat_helper!( ( $first, $($rest ,)* ) , $($right)* );
-        impl_tuple_concat!( $($rest)* , $($right)*);
+    ( [ $next:ident $( $rest:ident )* ] ( $( $t1:ident , )* ) ) => {
+        impl_tuple_concat_helper!( [ $next $( $rest )* ] ( $( $t1 ,)* ) () );
+        impl_tuple_concat!( [ $($rest)* ] ( $( $t1 , )* $next , ) );
     };
 }
 
-impl_tuple_concat!(A0 A1 A2 A3, B0 B1 B2 B3);
+impl_tuple_concat!([A B C D E F G H] ());
 
 // --- ParserOutput
 
 // there could be a special non-tuple ParserOutput type for character output such that Vec<char> ends up as String instead;
 // or, parsers could have a toggle that says whether they produce "data" or the exact characters parsed
-//
-// another special ParserOutput type might be Never
 
 pub trait ParserOutput {
     type UserType;
@@ -106,62 +101,5 @@ impl ParserOutput for Never {
 
     fn into_user_type(self) -> Self {
         self
-    }
-}
-
-// --- ParserTuple
-
-trait ParserTuple<'parse, 'source> {
-    type SeqParser;
-    type AltParser;
-
-    fn seq(self) -> Self::SeqParser;
-    fn alt(self) -> Self::AltParser;
-}
-
-impl<'parse, 'source> ParserTuple<'parse, 'source> for () {
-    type SeqParser = EmptyParser;
-    type AltParser = NeverParser;
-
-    fn seq(self) -> EmptyParser {
-        EmptyParser
-    }
-    fn alt(self) -> NeverParser {
-        NeverParser
-    }
-}
-
-impl<'parse, 'source, A> ParserTuple<'parse, 'source> for (A,)
-where
-    A: Parser<'parse, 'source>,
-{
-    type SeqParser = A;
-    type AltParser = A;
-
-    fn seq(self) -> A {
-        self.0
-    }
-    fn alt(self) -> A {
-        self.0
-    }
-}
-
-impl<'parse, 'source, A, B> ParserTuple<'parse, 'source> for (A, B)
-where
-    A: Parser<'parse, 'source>,
-    B: Parser<'parse, 'source>,
-{
-    type SeqParser = SequenceParser<A, B>;
-    type AltParser = EitherParser<A, B>;
-
-    fn seq(self) -> SequenceParser<A, B> {
-        let (a, b) = self;
-        parsers::sequence(a, b)
-    }
-
-    fn alt(self) -> EitherParser<A, B> {
-        todo!("what a disaster")
-        //let (a, b) = self;
-        //parsers::either(a, b)
     }
 }
