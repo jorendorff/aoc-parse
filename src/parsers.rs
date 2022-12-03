@@ -181,6 +181,7 @@ pub trait ParseIter {
     fn take_data(&mut self) -> Self::RawOutput;
 }
 
+mod chars;
 mod either;
 mod empty;
 mod exact;
@@ -193,6 +194,7 @@ mod repeat;
 mod sequence;
 
 pub use self::regex::RegexParser;
+pub use chars::{alnum, alpha, any_char, lower, upper};
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use exact::{exact, ExactParser};

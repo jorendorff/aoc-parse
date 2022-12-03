@@ -59,7 +59,7 @@ and **convert** them into Rust values.
 
 Here are the pieces that you can use in a pattern:
 
-*   `i8`, `i16`, `i32`, `i64`, `i128`, `isize`: These match an integer,
+*   `i8`, `i16`, `i32`, `i64`, `i128`, `isize` - These match an integer,
     written out using decimal digits, with an optional `+` or `-` sign
     at the start, like `0` or `-11474`.
 
@@ -67,9 +67,16 @@ Here are the pieces that you can use in a pattern:
     type you chose. For example, `parser!(i8).parse("1000")` is an error.
     (It matches the string, but fails during the "convert" phase.)
 
-*   `u8`, `u16`, `u32`, `u64`, `u128`, `usize`: The same, but without
+*   `u8`, `u16`, `u32`, `u64`, `u128`, `usize` - The same, but without
     the sign.
 
+*   `alpha`, `alnum`, `upper`, `lower` - Match single characters of
+    various categories. (These use the Unicode categories, even though
+    Advent of Code historically sticks to ASCII.)
+
+*   `any_char`: Match the next character, no matter what it is (like `.`
+    in a regular expression, except that `any_char` matches newline
+    characters).
 
 *   `bool` - Matches either `true` or `false` and converts it to the
     corresponding `bool` value.
@@ -147,10 +154,10 @@ Custom conversion:
 
     ```
     let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
-    let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
+    let line_parser = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
 
     assert_eq!(
-        line.parse("(3,66)-(27,8)").unwrap(),
+        line_parser.parse("(3,66)-(27,8)").unwrap(),
         Line { p1: Point(3, 66), p2: Point(27, 8) },
     );
     ```

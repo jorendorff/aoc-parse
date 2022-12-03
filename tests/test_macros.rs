@@ -99,60 +99,23 @@ mod names_and_scopes {
 }
 
 #[test]
-fn test_alpha() {
-    use aoc_parse::{ParseError, ParseIter, Parser};
-
-    type Result<T, E = ParseError> = std::result::Result<T, E>;
-
-    #[allow(non_camel_case_types)]
-    struct alpha;
-    enum AlphaIter<'source> {
-        Before(&'source str, usize),
-        Success(char),
-        Error,
-    }
-
-    impl<'parse, 'source> Parser<'parse, 'source> for alpha {
-        type Output = char;
-        type RawOutput = (char,);
-        type Iter = AlphaIter<'source>;
-        fn parse_iter(&'parse self, source: &'source str, start: usize) -> AlphaIter<'source> {
-            AlphaIter::Before(source, start)
-        }
-    }
-
-    impl<'source> ParseIter for AlphaIter<'source> {
-        type RawOutput = (char,);
-        fn next_parse(&mut self) -> Option<Result<usize>> {
-            if let AlphaIter::Before(source, start) = *self {
-                match source[start..].chars().next() {
-                    Some(c) if c.is_alphabetic() => {
-                        *self = AlphaIter::Success(c);
-                        Some(Ok(start + c.len_utf8()))
-                    }
-                    _ => {
-                        *self = AlphaIter::Error;
-                        Some(Err(ParseError::new_expected(source, start, "letter")))
-                    }
-                }
-            } else {
-                None
-            }
-        }
-
-        fn take_data(&mut self) -> (char,) {
-            match self {
-                AlphaIter::Success(c) => (*c,),
-                _ => panic!("invalid state"),
-            }
-        }
-    }
-
+fn test_chars() {
     let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(&p, "");
     assert_no_parse(&p, " hello");
     assert_parse_eq(&p, "hello", "hello");
     assert_parse_eq(&p, "京", "京");
+
+    let cls = parser!((upper lower*)+);
+    assert_parse_eq(
+        &cls,
+        "EntityManagerFactory",
+        vec![
+            ('E', vec!['n', 't', 'i', 't', 'y']),
+            ('M', vec!['a', 'n', 'a', 'g', 'e', 'r']),
+            ('F', vec!['a', 'c', 't', 'o', 'r', 'y']),
+        ],
+    );
 }
 
 mod ad2021 {
