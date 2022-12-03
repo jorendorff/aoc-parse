@@ -187,7 +187,6 @@ mod empty;
 mod exact;
 mod lines;
 mod map;
-mod never;
 mod primitive;
 mod regex;
 mod repeat;
@@ -202,7 +201,6 @@ pub use lines::{
     line, line_str, lines, lines_str, LineAsStringParser, LineParser, LinesAsStringsParser,
 };
 pub use map::{MapParser, MapRawParser};
-pub use never::NeverParser;
 pub use primitive::{
     bool, i128, i128_bin, i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin,
     i64_hex, i8, i8_bin, i8_hex, isize, isize_bin, isize_hex, u128, u128_bin, u128_hex, u16,

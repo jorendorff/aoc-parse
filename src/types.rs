@@ -91,15 +91,3 @@ impl_parser_output!(A B C D E);
 impl_parser_output!(A B C D E F);
 impl_parser_output!(A B C D E F G);
 impl_parser_output!(A B C D E F G H);
-
-#[derive(Debug)]
-pub enum Never {}
-
-impl ParserOutput for Never {
-    type UserType = Self;
-    type OptionalType = Option<Self>;
-
-    fn into_user_type(self) -> Self {
-        self
-    }
-}
