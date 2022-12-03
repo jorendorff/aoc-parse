@@ -47,23 +47,23 @@ from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
 from_str_parse_impl!(bool, bool_regex);
 
 macro_rules! from_str_radix_parsers {
-        ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* : $re_name:ident ) => {
-            $(
-                #[allow(non_upper_case_globals)]
-                pub const $bin: RegexParser<$ty, ParseIntError> = RegexParser {
-                    regex: $re_name,
-                    parse_fn: |s| $ty::from_str_radix(s, 2),
-                };
+    ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* : $re_name:ident ) => {
+        $(
+            #[allow(non_upper_case_globals)]
+            pub const $bin: RegexParser<$ty, ParseIntError> = RegexParser {
+                regex: $re_name,
+                parse_fn: |s| $ty::from_str_radix(s, 2),
+            };
 
-                #[allow(non_upper_case_globals)]
-                pub const $hex: RegexParser<$ty, ParseIntError> = RegexParser {
-                    regex: $re_name,
-                    parse_fn: |s| $ty::from_str_radix(s, 16),
-                };
+            #[allow(non_upper_case_globals)]
+            pub const $hex: RegexParser<$ty, ParseIntError> = RegexParser {
+                regex: $re_name,
+                parse_fn: |s| $ty::from_str_radix(s, 16),
+            };
 
-            )*
-        }
+        )*
     }
+}
 
 from_str_radix_parsers!(
     (u8, u8_bin, u8_hex),
