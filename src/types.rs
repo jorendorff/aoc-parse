@@ -50,21 +50,18 @@ impl_tuple_concat!([A B C D E F G H] ());
 
 pub trait ParserOutput {
     type UserType;
-    type OptionalType; // trying to make Option<()> be bool instead
 
     fn into_user_type(self) -> Self::UserType;
 }
 
 impl ParserOutput for () {
     type UserType = Self;
-    type OptionalType = bool;
 
     fn into_user_type(self) {}
 }
 
 impl<A> ParserOutput for (A,) {
     type UserType = A;
-    type OptionalType = Option<A>;
 
     fn into_user_type(self) -> A {
         self.0
@@ -75,7 +72,6 @@ macro_rules! impl_parser_output {
     ( $( $t:ident )* ) => {
         impl < $($t,)* > ParserOutput for ( $($t,)* ) {
             type UserType = Self;
-            type OptionalType = Option<Self>;
 
             fn into_user_type(self) -> Self {
                 self
