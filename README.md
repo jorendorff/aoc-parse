@@ -74,6 +74,10 @@ Here are the pieces that you can use in a pattern:
     various categories. (These use the Unicode categories, even though
     Advent of Code historically sticks to ASCII.)
 
+*   `digit`, `digit_bin`, `digit_hex` - Match a single ASCII character
+    that's a digit in base 10, base 2, or base 16, respectively.
+    The digit is converted to its numeric value, as a `usize`.
+
 *   `any_char`: Match the next character, no matter what it is (like `.`
     in a regular expression, except that `any_char` matches newline
     characters).

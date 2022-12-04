@@ -1,3 +1,4 @@
+use crate::parsers::MapParser;
 use crate::{ParseError, ParseIter, Parser, Result};
 
 #[allow(non_camel_case_types)]
@@ -96,4 +97,37 @@ pub const lower: CharParser = CharParser {
 pub const any_char: CharParser = CharParser {
     noun: "any character",
     predicate: |_| true,
+};
+
+/// Matches any ASCII decimal digit `'0'`-`'9'` and converts it to its integer
+/// value `0`-`9`.
+#[allow(non_upper_case_globals)]
+pub const digit: MapParser<CharParser, fn(char) -> usize> = MapParser {
+    parser: CharParser {
+        noun: "decimal digit",
+        predicate: |c| c.is_ascii_digit(),
+    },
+    mapper: |c| c.to_digit(10).unwrap() as usize,
+};
+
+/// Matches a binary digit `'0'` or `'1'`, and converts it to its integer value
+/// `0` or `1`.
+#[allow(non_upper_case_globals)]
+pub const digit_bin: MapParser<CharParser, fn(char) -> usize> = MapParser {
+    parser: CharParser {
+        noun: "hexadecimal digit",
+        predicate: |c| c.is_digit(2),
+    },
+    mapper: |c| c.to_digit(2).unwrap() as usize,
+};
+
+/// Matches a hexadecimal digit `'0'`-`'9'`, `'a'`-`'f'`, or `'A'`-`'F'`, and
+/// converts it to its integer value `0`-`15`.
+#[allow(non_upper_case_globals)]
+pub const digit_hex: MapParser<CharParser, fn(char) -> usize> = MapParser {
+    parser: CharParser {
+        noun: "hexadecimal digit",
+        predicate: |c| c.is_digit(16),
+    },
+    mapper: |c| c.to_digit(16).unwrap() as usize,
 };

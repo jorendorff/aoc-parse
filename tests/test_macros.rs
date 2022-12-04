@@ -116,6 +116,28 @@ fn test_chars() {
             ('F', vec!['a', 'c', 't', 'o', 'r', 'y']),
         ],
     );
+
+    let p = parser!(lines(digit+));
+    assert_parse_eq(&p, "0\n", vec![vec![0]]);
+    assert_no_parse(&p, "14a0\n");
+    assert_parse_eq(
+        &p,
+        "1482\n3271\n5390\n",
+        vec![vec![1, 4, 8, 2], vec![3, 2, 7, 1], vec![5, 3, 9, 0]],
+    );
+}
+
+#[test]
+fn test_backtracking() {
+    assert_parse_eq(
+        &parser!(lines(digit_bin+) line(digit_bin+) line(digit_bin+)),
+        "01101\n10110\n01010\n00001\n",
+        (
+            vec![vec![0, 1, 1, 0, 1], vec![1, 0, 1, 1, 0]],
+            vec![0, 1, 0, 1, 0],
+            vec![0, 0, 0, 0, 1],
+        ),
+    );
 }
 
 mod ad2021 {

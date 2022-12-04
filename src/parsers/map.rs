@@ -52,8 +52,8 @@ where
 
 #[derive(Clone, Copy)]
 pub struct MapParser<P, F> {
-    parser: P,
-    mapper: F,
+    pub(crate) parser: P,
+    pub(crate) mapper: F,
 }
 
 pub struct MapParseIter<'parse, 'source, P, F>
