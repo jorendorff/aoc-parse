@@ -172,6 +172,6 @@ pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 1, None, false)
 }
 
-pub fn sep_by<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
+pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
     repeat(pattern, sep, 0, None, false)
 }

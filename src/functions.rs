@@ -72,7 +72,7 @@ where
     type Output = RepeatParser<T, U>;
 
     fn call_parser_function(&self, (parser, sep): (T, U)) -> Self::Output {
-        parsers::repeat(parser, sep, 0, None, false)
+        parsers::repeat_sep(parser, sep)
     }
 }
 

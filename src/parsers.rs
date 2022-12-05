@@ -207,7 +207,7 @@ pub use primitive::{
     u16_bin, u16_hex, u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, usize,
     usize_bin, usize_hex,
 };
-pub use repeat::{plus, repeat, sep_by, star, RepeatParser};
+pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
 pub use sequence::{sequence, SequenceParser};
 
 // --- Wrappers
@@ -320,7 +320,7 @@ mod tests {
         assert_no_parse(&p, "ab");
         assert_no_parse(&p, "ba");
 
-        let p = sep_by(exact("cow"), exact(","));
+        let p = repeat_sep(exact("cow"), exact(","));
         assert_parse(&p, "");
         assert_parse(&p, "cow");
         assert_parse(&p, "cow,cow");
@@ -336,7 +336,7 @@ mod tests {
         assert_parse(&p, "a");
         assert_parse(&p, "aa");
 
-        let p = sep_by(usize, exact(","));
+        let p = repeat_sep(usize, exact(","));
         assert_parse_eq(&p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
 
         assert_no_parse(&u8, "256");
