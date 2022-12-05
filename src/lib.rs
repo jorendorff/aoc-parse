@@ -144,9 +144,6 @@
 //!     This converts only the bits that match *pattern* to Rust values, producing
 //!     a `Vec`. Any parts of the string matched by *separator* are not converted.
 //!
-//! *   <code>lines(<var>pattern</var>)</code> - Matches any number of lines of
-//!     text matching *pattern*. Each line must be terminated by a newline, `'\n'`.
-//!
 //! Custom conversion:
 //!
 //! *   <code>... (<var>name1</var>: <var>pattern1</var>) ... => <var>expr</var></code> -
@@ -197,6 +194,25 @@
 //!
 //!     For example, `parser!({"<" => -1, ">" => 1})` either matches `<`,
 //!     returning the value `-1`, or matches `>`, returing `1`.
+//!
+//! Lines and sections:
+//!
+//! *   <code>line(<var>pattern</var>)</code> - Matches a single line of text that
+//!     matches *pattern*, and the newline at the end of the line.
+//!
+//!     This is like <code>^<var>pattern</var>\n</code> in regular expressions,
+//!     except <code>line(<var>pattern</var>)</code> will only ever match exactly
+//!     one line of text, even if *pattern* could match more newlines.
+//!
+//!     `line(string(any_char+))` matches a line of text, strips off the newline
+//!     character, and returns the rest as a `String`.
+//!
+//!     `line("")` matches a blank line.
+//!
+//! *   <code>lines(<var>pattern</var>)</code> - Matches any number of lines of
+//!     text matching *pattern*. Each line must be terminated by a newline, `'\n'`.
+//!
+//!     Equivalent to <code>line(<var>pattern</var>)*</code>.
 //!
 //! [AoC]: https://adventofcode.com/
 //! [example]: https://adventofcode.com/2015/day/2
