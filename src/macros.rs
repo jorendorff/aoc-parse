@@ -243,7 +243,7 @@ macro_rules! parser {
     //
     // Transform a `prim` into a Rust Parser expression.
     (@prim $x:ident) => {
-        $crate::macros::check_parser($x) // TODO: does check_parser help here? does it hurt?
+        $x
     };
     (@prim $x:literal) => {
         $crate::macros::exact($x)
@@ -362,14 +362,4 @@ macro_rules! parser {
             $crate::parser!(@seq _ [ $($tail)* ] [ ] [ ])
         )
     };
-}
-
-/// My hope here is that this will help with the error message when you
-/// accidentally do something like `parser!(blah)` where `blah` isn't a parser
-/// at all.
-pub fn check_parser<'a, 'b, P>(parser: P) -> P
-where
-    P: crate::Parser<'a, 'b>,
-{
-    parser
 }
