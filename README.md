@@ -70,6 +70,16 @@ Here are the pieces that you can use in a pattern:
 *   `u8`, `u16`, `u32`, `u64`, `u128`, `usize` - The same, but without
     the sign.
 
+*   `i8_bin`, `i16_bin`, `i32_bin`, `i64_bin`, `i128_bin`, `isize_bin`,
+    `u8_bin`, `u16_bin`, `u32_bin`, `u64_bin`, `u128_bin`, `usize_bin`,
+    `i8_hex`, `i16_hex`, `i32_hex`, `i64_hex`, `i128_hex`, `isize_hex`,
+    `u8_hex`, `u16_hex`, `u32_hex`, `u64_hex`, `u128_hex`, `usize_hex` -
+    Match an integer in base 2 or base 16. The `_hex` parsers allow both
+    uppercase and lowercase digits `A`-`F`.
+
+*   `bool` - Matches either `true` or `false` and converts it to the
+    corresponding `bool` value.
+
 *   `alpha`, `alnum`, `upper`, `lower` - Match single characters of
     various categories. (These use the Unicode categories, even though
     Advent of Code historically sticks to ASCII.)
@@ -81,9 +91,6 @@ Here are the pieces that you can use in a pattern:
 *   `any_char`: Match the next character, no matter what it is (like `.`
     in a regular expression, except that `any_char` matches newline
     characters).
-
-*   `bool` - Matches either `true` or `false` and converts it to the
-    corresponding `bool` value.
 
 *   `"x"` - A Rust string, in quotes, is a pattern that matches that exact
     string only.
