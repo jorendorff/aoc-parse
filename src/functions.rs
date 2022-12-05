@@ -6,10 +6,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    parsers::{
-        self, EmptyParser, LineAsStringParser, LineParser, LinesAsStringsParser, RepeatParser,
-        StringParser,
-    },
+    parsers::{self, EmptyParser, LineParser, RepeatParser, StringParser},
     Parser,
 };
 
@@ -23,14 +20,6 @@ pub trait ParserFunction<Args> {
 // supports either 1 or 0 arguments.
 pub struct line;
 
-impl ParserFunction<()> for line {
-    type Output = LineAsStringParser;
-
-    fn call_parser_function(&self, (): ()) -> Self::Output {
-        parsers::line_str()
-    }
-}
-
 impl<'parse, 'source, T> ParserFunction<(T,)> for line
 where
     T: Parser<'parse, 'source>,
@@ -43,14 +32,6 @@ where
 }
 
 pub struct lines;
-
-impl ParserFunction<()> for lines {
-    type Output = LinesAsStringsParser;
-
-    fn call_parser_function(&self, (): ()) -> Self::Output {
-        parsers::lines_str()
-    }
-}
 
 impl<'parse, 'source, T> ParserFunction<(T,)> for lines
 where

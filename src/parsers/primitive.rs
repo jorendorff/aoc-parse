@@ -26,7 +26,6 @@ regexes! {
     bool_regex = r"true|false";
     uint_bin_regex = r"\A[01]+";
     int_bin_regex = r"\A[+-]?[01]+";
-    line_regex = r".*";
 }
 
 macro_rules! from_str_parse_impl {
