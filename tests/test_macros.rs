@@ -140,6 +140,17 @@ fn test_backtracking() {
     );
 }
 
+#[test]
+fn test_root() {
+    // At one point, the string below would parse to `(1, 4, 3, 5)`. This was a
+    // bug; the RawOutput type of `fraction` should be a singleton tuple.
+
+    let fraction = parser!(i64 "/" u64);
+    let range = parser!(fraction ".." fraction);
+
+    assert_parse_eq(&range, "1/4..3/5", ((1, 4), (3, 5)));
+}
+
 mod ad2021 {
     use aoc_parse::{parser, prelude::*};
 

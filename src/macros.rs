@@ -345,12 +345,16 @@ macro_rules! parser {
 
     // parser!(ident : ...) - Labeled expression, `label ::= ident : cast`
     ($label:ident : $($tail:tt)*) => {
-        $crate::parser!(@seq $label [ $($tail)* ] [ ] [ ])
+        $crate::macros::parenthesize(
+            $crate::parser!(@seq $label [ $($tail)* ] [ ] [ ])
+        )
     };
 
     // Hand anything else off to the @seq submacro.
     ($($tail:tt)*) => {
-        $crate::parser!(@seq _ [ $($tail)* ] [ ] [ ])
+        $crate::macros::parenthesize(
+            $crate::parser!(@seq _ [ $($tail)* ] [ ] [ ])
+        )
     };
 }
 
