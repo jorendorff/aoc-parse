@@ -157,6 +157,43 @@ fn test_root() {
     assert_parse_eq(&range, "1/4..3/5", ((1, 4), (3, 5)));
 }
 
+#[test]
+fn test_sections() {
+    assert_parse_eq(&parser!(section(lines(u64))), "3\n9\n", vec![3, 9]);
+
+    assert_parse_eq(
+        &parser!(
+            section(lines(u64))
+            sections(lines(string(alnum+)))
+        ),
+        "\
+3
+9
+
+fwjf09e
+fq7fnkx
+7f7e655
+
+69wef2b
+fjw90o1
+
+f0w88yhf
+",
+        (
+            vec![3, 9],
+            vec![
+                vec![
+                    "fwjf09e".to_string(),
+                    "fq7fnkx".to_string(),
+                    "7f7e655".to_string(),
+                ],
+                vec!["69wef2b".to_string(), "fjw90o1".to_string()],
+                vec!["f0w88yhf".to_string()],
+            ],
+        ),
+    );
+}
+
 mod ad2021 {
     use aoc_parse::{parser, prelude::*};
 

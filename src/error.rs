@@ -44,8 +44,12 @@ enum ParseErrorReason {
     Extra,
     #[error("line() can't match here because this is not at the start of a line")]
     NotAtLineStart,
+    #[error("section() can't match here because this is not at the start of a section")]
+    NotAtSectionStart,
     #[error("line(pattern) matched part of the line, but not all of it")]
     LineExtra,
+    #[error("section(pattern) matched part of the section, but not all of it")]
+    SectionExtra,
     #[error("expected {0:?}")]
     Expected(String),
     #[error("failed to parse {input:?} as type {type_name}: {message}")]
@@ -75,11 +79,27 @@ impl ParseError {
         }
     }
 
+    pub fn new_bad_section_start(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::NotAtSectionStart,
+        }
+    }
+
     pub fn new_line_extra(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
             reason: ParseErrorReason::LineExtra,
+        }
+    }
+
+    pub fn new_section_extra(source: &str, location: usize) -> Self {
+        ParseError {
+            source: source.to_string(),
+            location,
+            reason: ParseErrorReason::SectionExtra,
         }
     }
 
@@ -115,6 +135,14 @@ impl ParseError {
             location,
             reason: ParseErrorReason::CannotMatch,
         }
+    }
+
+    // This is used when a subparser is used on a slice of the original string.
+    // If the subparse fails, the error location is a position within the slice.
+    // This can be used, passing the start offset of the slice, to convert that
+    // to a position within the original string.
+    pub(crate) fn adjust_location(&mut self, offset: usize) {
+        self.location += offset;
     }
 }
 

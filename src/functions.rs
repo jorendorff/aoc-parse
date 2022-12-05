@@ -6,7 +6,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::{
-    parsers::{self, EmptyParser, LineParser, RepeatParser, StringParser},
+    parsers::{self, EmptyParser, LineParser, RepeatParser, SectionParser, StringParser},
     Parser,
 };
 
@@ -16,8 +16,6 @@ pub trait ParserFunction<Args> {
     fn call_parser_function(&self, args: Args) -> Self::Output;
 }
 
-// `line` needs to be something other than a plain Rust function, because it
-// supports either 1 or 0 arguments.
 pub struct line;
 
 impl<'parse, 'source, T> ParserFunction<(T,)> for line
@@ -41,6 +39,32 @@ where
 
     fn call_parser_function(&self, (line_parser,): (T,)) -> Self::Output {
         parsers::lines(line_parser)
+    }
+}
+
+pub struct section;
+
+impl<'parse, 'source, T> ParserFunction<(T,)> for section
+where
+    T: Parser<'parse, 'source>,
+{
+    type Output = SectionParser<T>;
+
+    fn call_parser_function(&self, (section_parser,): (T,)) -> Self::Output {
+        parsers::section(section_parser)
+    }
+}
+
+pub struct sections;
+
+impl<'parse, 'source, T> ParserFunction<(T,)> for sections
+where
+    T: Parser<'parse, 'source>,
+{
+    type Output = RepeatParser<SectionParser<T>, EmptyParser>;
+
+    fn call_parser_function(&self, (section_parser,): (T,)) -> Self::Output {
+        parsers::sections(section_parser)
     }
 }
 

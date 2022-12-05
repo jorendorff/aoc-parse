@@ -198,7 +198,7 @@ pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, uppe
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use exact::{exact, ExactParser};
-pub use lines::{line, lines, LineParser};
+pub use lines::{line, lines, section, sections, LineParser, SectionParser};
 pub use map::{MapParser, MapRawParser};
 pub use primitive::{
     bool, i128, i128_bin, i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin,
