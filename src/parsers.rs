@@ -191,6 +191,7 @@ mod primitive;
 mod regex;
 mod repeat;
 mod sequence;
+mod string;
 
 pub use self::regex::RegexParser;
 pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, upper};
@@ -209,6 +210,7 @@ pub use primitive::{
 };
 pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
 pub use sequence::{sequence, SequenceParser};
+pub use string::StringParser;
 
 // --- Wrappers
 

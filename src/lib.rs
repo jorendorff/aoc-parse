@@ -115,6 +115,13 @@
 //!     assert_eq!(amount.parse("1/4 tsp").unwrap(), (1, 4));
 //!     ```
 //!
+//! *   <code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
+//!     but instead of converting it to some value, simply return the matched
+//!     characters as a `String`.
+//!
+//!     By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy
+//!     in AoC, but often it's better to have it return a `String`.
+//!
 //! Repeating patterns:
 //!
 //! *   <code><var>pattern</var>*</code> - Any pattern followed by an asterisk
@@ -207,7 +214,7 @@ pub use parsers::{ParseIter, Parser};
 use types::ParserOutput;
 
 pub mod prelude {
-    pub use crate::functions::{line, lines, repeat_sep};
+    pub use crate::functions::{line, lines, repeat_sep, string};
     pub use crate::parsers::{
         alnum, alpha, any_char, aoc_parse, bool, digit, digit_bin, digit_hex, i128, i128_bin,
         i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin,

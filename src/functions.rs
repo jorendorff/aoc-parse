@@ -8,6 +8,7 @@
 use crate::{
     parsers::{
         self, EmptyParser, LineAsStringParser, LineParser, LinesAsStringsParser, RepeatParser,
+        StringParser,
     },
     Parser,
 };
@@ -73,6 +74,19 @@ where
 
     fn call_parser_function(&self, (parser, sep): (T, U)) -> Self::Output {
         parsers::repeat_sep(parser, sep)
+    }
+}
+
+pub struct string;
+
+impl<'parse, 'source, P> ParserFunction<(P,)> for string
+where
+    P: Parser<'parse, 'source>,
+{
+    type Output = StringParser<P>;
+
+    fn call_parser_function(&self, (parser,): (P,)) -> Self::Output {
+        StringParser { parser }
     }
 }
 

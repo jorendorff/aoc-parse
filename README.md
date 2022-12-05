@@ -116,6 +116,13 @@ Here are the pieces that you can use in a pattern:
     assert_eq!(amount.parse("1/4 tsp").unwrap(), (1, 4));
     ```
 
+*   <code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
+    but instead of converting it to some value, simply return the matched
+    characters as a `String`.
+
+    By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy
+    in AoC, but often it's better to have it return a `String`.
+
 Repeating patterns:
 
 *   <code><var>pattern</var>*</code> - Any pattern followed by an asterisk

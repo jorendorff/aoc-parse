@@ -117,6 +117,12 @@ fn test_chars() {
         ],
     );
 
+    assert_parse_eq(
+        &parser!(string((upper lower*)+)),
+        "EntityManagerFactory",
+        "EntityManagerFactory".to_string(),
+    );
+
     let p = parser!(lines(digit+));
     assert_parse_eq(&p, "0\n", vec![vec![0]]);
     assert_no_parse(&p, "14a0\n");
