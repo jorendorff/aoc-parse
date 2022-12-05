@@ -198,7 +198,7 @@ macro_rules! parser {
 
     // end of input
     (@seq $label:tt [ ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
-        $crate::parser!(@reverse [ $($parts ,)* ] [ $crate::macros::empty() ])
+        $crate::parser!(@reverse [ $($parts ,)* ] [])
     };
 
     // anything not matched by this point is an error
@@ -209,8 +209,14 @@ macro_rules! parser {
     // parser!(@reverse [input expr stack] [output stack])
     //
     // Take the stack of parsers and produce a single sequence-parser.
+    (@reverse [ ] [ ]) => {
+        $crate::macros::empty()
+    };
     (@reverse [ ] [ $out:expr ]) => {
         $out
+    };
+    (@reverse [ $head:expr , $($tail:expr ,)* ] [ ]) => {
+        $crate::parser!(@reverse [ $($tail ,)* ] [ $head ])
     };
     (@reverse [ $head:expr , $($tail:expr ,)* ] [ $out:expr ]) => {
         $crate::parser!(@reverse [ $($tail ,)* ] [ $crate::macros::sequence($head, $out) ])
