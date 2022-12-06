@@ -263,8 +263,7 @@
 //!             (2, vec![vec!['g', 'r', 'f'], vec!['g', 'B']]),
 //!         ],
 //!     );
-//!
-//!
+//!     ```
 //!
 //! [AoC]: https://adventofcode.com/
 //! [example]: https://adventofcode.com/2015/day/2
