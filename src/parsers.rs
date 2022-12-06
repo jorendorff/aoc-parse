@@ -216,6 +216,8 @@ pub use string::StringParser;
 
 // --- Wrappers
 
+// Used by the `parser!()` macro to implement the `?` quantifier.
+#[doc(hidden)]
 pub fn opt<T>(
     pattern: impl Parser<Output = T> + 'static,
 ) -> impl Parser<Output = Option<T>, RawOutput = (Option<T>,)> {
@@ -227,6 +229,7 @@ pub fn opt<T>(
 
 // Make sure that RawOutput is exactly `(T,)`.
 //
+// Used by the `parser!()` macro to implement grouping parentheses.
 // Parenthesizing an expression makes a semantic difference to prevent it from
 // disappearing in concatenation.
 //
@@ -243,6 +246,7 @@ pub fn opt<T>(
 //
 // It turns out all we need is to ensure the `RawOutput` type of the
 // parenthesized parser is a singleton tuple type.
+#[doc(hidden)]
 pub fn parenthesize<P>(pattern: P) -> MapParser<P, fn(P::Output) -> P::Output>
 where
     P: Parser,

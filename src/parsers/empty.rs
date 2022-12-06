@@ -38,6 +38,8 @@ impl ParseIter for EmptyParseIter {
     fn take_data(&mut self) {}
 }
 
+// Used by the `parser!()` macro to implement the empty pattern, `()`.
+#[doc(hidden)]
 pub fn empty() -> EmptyParser {
     EmptyParser
 }

@@ -165,16 +165,20 @@ pub fn repeat<Pattern, Sep>(
     }
 }
 
-// Kleene *
+// Used by the `parser!()` macro to implement the `*` quantifier.
+#[doc(hidden)]
 pub fn star<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 0, None, false)
 }
 
-// Kleene +
+// Used by the `parser!()` macro to implement the `+` quantifier.
+#[doc(hidden)]
 pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 1, None, false)
 }
 
+// Used by `aoc_parse::functions::repeat_sep`.
+#[doc(hidden)]
 pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
     repeat(pattern, sep, 0, None, false)
 }

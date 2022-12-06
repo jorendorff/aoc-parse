@@ -200,6 +200,8 @@ where
 pub type LineParser<P> = RegionParser<Line, P>;
 pub type SectionParser<P> = RegionParser<Section, P>;
 
+// Used to implement `aoc_parse::functions::line`.
+#[doc(hidden)]
 pub fn line<P>(parser: P) -> LineParser<P> {
     LineParser {
         parser,
@@ -207,10 +209,14 @@ pub fn line<P>(parser: P) -> LineParser<P> {
     }
 }
 
+// Used to implement `aoc_parse::functions::lines`.
+#[doc(hidden)]
 pub fn lines<P>(parser: P) -> RepeatParser<LineParser<P>, EmptyParser> {
     star(line(parser))
 }
 
+// Used to implement `aoc_parse::functions::section`.
+#[doc(hidden)]
 pub fn section<P>(parser: P) -> SectionParser<P> {
     SectionParser {
         parser,
@@ -218,6 +224,8 @@ pub fn section<P>(parser: P) -> SectionParser<P> {
     }
 }
 
+// Used to implement `aoc_parse::functions::sections`.
+#[doc(hidden)]
 pub fn sections<P>(parser: P) -> RepeatParser<SectionParser<P>, EmptyParser> {
     star(section(parser))
 }

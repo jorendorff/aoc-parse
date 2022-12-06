@@ -105,6 +105,8 @@ where
     }
 }
 
+// Used by the `parser!()` macro to implement concatenation.
+#[doc(hidden)]
 pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail> {
     SequenceParser { head, tail }
 }

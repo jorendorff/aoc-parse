@@ -54,6 +54,8 @@ impl<'parse> ParseIter for ExactParseIter<'parse> {
     fn take_data(&mut self) {}
 }
 
+// Used by the `parser!()` macro to implement string-literal syntax.
+#[doc(hidden)]
 pub fn exact(s: &'static str) -> ExactParser {
     ExactParser { s }
 }

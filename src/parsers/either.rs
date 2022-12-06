@@ -105,6 +105,8 @@ pub fn either<A, B>(left: A, right: B) -> EitherParser<A, B> {
 
 pub type AltParser<A, B, T> = MapParser<EitherParser<A, B>, fn(Either<T, T>) -> T>;
 
+// Used by the `parser!()` macro to implement `{p1, p2, ...}` syntax.
+#[doc(hidden)]
 pub fn alt<A, B, T>(left: A, right: B) -> AltParser<A, B, T>
 where
     A: Parser<Output = T>,
