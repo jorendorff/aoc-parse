@@ -36,10 +36,7 @@ where
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
     type Iter = SequenceParseIter<'parse, Head, Tail>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         SequenceParseIter {
             parsers: self,
             is_at_start: true,

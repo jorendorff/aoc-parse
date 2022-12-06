@@ -36,10 +36,7 @@ where
     type RawOutput = (Either<A::Output, B::Output>,);
     type Iter = EitherParseIter<'parse, A, B>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         EitherParseIter {
             source,
             start,

@@ -26,10 +26,7 @@ where
     type RawOutput = T;
     type Iter = MapRawParseIter<'parse, P, F>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         MapRawParseIter {
             iter: self.parser.parse_iter(source, start),
             mapper: &self.mapper,
@@ -83,10 +80,7 @@ where
     type RawOutput = (T,);
     type Iter = MapParseIter<'parse, P, F>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         MapParseIter {
             iter: self.parser.parse_iter(source, start),
             mapper: &self.mapper,

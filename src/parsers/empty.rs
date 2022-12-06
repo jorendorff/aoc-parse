@@ -10,10 +10,7 @@ impl<'parse> Parser<'parse> for EmptyParser {
     type RawOutput = ();
     type Iter = EmptyParseIter;
 
-    fn parse_iter<'source>(&'parse self, _source: &'source str, start: usize) -> EmptyParseIter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, _source: &'parse str, start: usize) -> EmptyParseIter {
         EmptyParseIter {
             used: false,
             location: start,

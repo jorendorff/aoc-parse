@@ -37,10 +37,7 @@ where
     type RawOutput = (Vec<Pattern::Output>,);
     type Iter = RepeatParseIter<'parse, Pattern, Sep>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         RepeatParseIter {
             source,
             params: self,

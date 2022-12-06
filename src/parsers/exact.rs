@@ -19,14 +19,7 @@ impl<'parse> Parser<'parse> for ExactParser {
     type RawOutput = ();
     type Iter = ExactParseIter<'parse>;
 
-    fn parse_iter<'source>(
-        &'parse self,
-        source: &'source str,
-        start: usize,
-    ) -> ExactParseIter<'parse>
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> ExactParseIter<'parse> {
         ExactParseIter {
             expected: &self.s,
             input: source,

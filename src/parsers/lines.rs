@@ -104,10 +104,7 @@ where
     type Output = P::Output;
     type Iter = RegionParseIter<'parse, R, P>;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         RegionParseIter::Init {
             parser: self,
             source,

@@ -33,24 +33,16 @@ pub trait Parser<'parse> {
     ///
     /// This succeeds only if this parser matches the entire input string. It's
     /// an error if any unmatched characters are left over at the end of `s`.
-    fn parse<'source>(&'parse self, s: &'source str) -> Result<Self::Output>
-    where
-        'source: 'parse,
-    {
+    fn parse(&'parse self, s: &'parse str) -> Result<Self::Output> {
         self.parse_raw(s).map(|v| v.into_user_type())
     }
 
     /// Produce a [parse iterator][ParseIter]. This is an internal implementation detail of
     /// the parser and shouldn't normally be called directly from application code.
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse;
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter;
 
     /// Like `parse` but produce the output in its [raw form][Self::RawOutput].
-    fn parse_raw<'source>(&'parse self, s: &'source str) -> Result<Self::RawOutput>
-    where
-        'source: 'parse,
-    {
+    fn parse_raw(&'parse self, s: &'parse str) -> Result<Self::RawOutput> {
         let mut it = self.parse_iter(s, 0);
         let mut best_end: Option<usize> = None;
         while let Some(parse) = it.next_parse() {
@@ -118,10 +110,7 @@ where
     type Output = P::Output;
     type RawOutput = P::RawOutput;
 
-    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
-    where
-        'source: 'parse,
-    {
+    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
         <P as Parser<'parse>>::parse_iter(self, source, start)
     }
 }
