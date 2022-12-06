@@ -7,22 +7,25 @@ pub struct CharParser {
     predicate: fn(char) -> bool,
 }
 
-pub enum CharParseIter<'parse, 'source> {
+pub enum CharParseIter<'parse> {
     Before {
         parser: &'parse CharParser,
-        source: &'source str,
+        source: &'parse str,
         start: usize,
     },
     Success(char),
     Error,
 }
 
-impl<'parse, 'source> Parser<'parse, 'source> for CharParser {
+impl<'parse> Parser<'parse> for CharParser {
     type Output = char;
     type RawOutput = (char,);
-    type Iter = CharParseIter<'parse, 'source>;
+    type Iter = CharParseIter<'parse>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         CharParseIter::Before {
             parser: self,
             source,
@@ -31,7 +34,7 @@ impl<'parse, 'source> Parser<'parse, 'source> for CharParser {
     }
 }
 
-impl<'parse, 'source> ParseIter for CharParseIter<'parse, 'source> {
+impl<'parse> ParseIter for CharParseIter<'parse> {
     type RawOutput = (char,);
     fn next_parse(&mut self) -> Option<Result<usize>> {
         if let CharParseIter::Before {

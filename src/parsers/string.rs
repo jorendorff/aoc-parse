@@ -7,25 +7,28 @@ pub struct StringParser<P> {
     pub(crate) parser: P,
 }
 
-pub struct StringParseIter<'parse, 'source, P>
+pub struct StringParseIter<'parse, P>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
-    source: &'source str,
+    source: &'parse str,
     start: usize,
     end: usize,
     iter: P::Iter,
 }
 
-impl<'parse, 'source, P> Parser<'parse, 'source> for StringParser<P>
+impl<'parse, P> Parser<'parse> for StringParser<P>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     type Output = String;
     type RawOutput = (String,);
-    type Iter = StringParseIter<'parse, 'source, P>;
+    type Iter = StringParseIter<'parse, P>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         StringParseIter {
             source,
             start,
@@ -35,9 +38,9 @@ where
     }
 }
 
-impl<'parse, 'source, P> ParseIter for StringParseIter<'parse, 'source, P>
+impl<'parse, P> ParseIter for StringParseIter<'parse, P>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     type RawOutput = (String,);
 

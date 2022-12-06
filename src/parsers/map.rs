@@ -7,26 +7,29 @@ pub struct MapRawParser<P, F> {
     mapper: F,
 }
 
-pub struct MapRawParseIter<'parse, 'source, P, F>
+pub struct MapRawParseIter<'parse, P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     iter: P::Iter,
     mapper: &'parse F,
 }
 
-impl<'parse, 'source, P, F, T> Parser<'parse, 'source> for MapRawParser<P, F>
+impl<'parse, P, F, T> Parser<'parse> for MapRawParser<P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
     F: Fn(P::RawOutput) -> T,
     F: 'parse,
     T: ParserOutput,
 {
     type Output = <T as ParserOutput>::UserType;
     type RawOutput = T;
-    type Iter = MapRawParseIter<'parse, 'source, P, F>;
+    type Iter = MapRawParseIter<'parse, P, F>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         MapRawParseIter {
             iter: self.parser.parse_iter(source, start),
             mapper: &self.mapper,
@@ -34,9 +37,9 @@ where
     }
 }
 
-impl<'parse, 'source, P, F, T> ParseIter for MapRawParseIter<'parse, 'source, P, F>
+impl<'parse, P, F, T> ParseIter for MapRawParseIter<'parse, P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
     F: Fn(P::RawOutput) -> T,
 {
     type RawOutput = T;
@@ -56,9 +59,9 @@ pub struct MapParser<P, F> {
     pub(crate) mapper: F,
 }
 
-pub struct MapParseIter<'parse, 'source, P, F>
+pub struct MapParseIter<'parse, P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     iter: P::Iter,
     mapper: &'parse F,
@@ -70,17 +73,20 @@ impl<P, F> MapParser<P, F> {
     }
 }
 
-impl<'parse, 'source, P, F, T> Parser<'parse, 'source> for MapParser<P, F>
+impl<'parse, P, F, T> Parser<'parse> for MapParser<P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
     F: Fn(P::Output) -> T,
     F: 'parse,
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter = MapParseIter<'parse, 'source, P, F>;
+    type Iter = MapParseIter<'parse, P, F>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         MapParseIter {
             iter: self.parser.parse_iter(source, start),
             mapper: &self.mapper,
@@ -88,9 +94,9 @@ where
     }
 }
 
-impl<'parse, 'source, P, F, T> ParseIter for MapParseIter<'parse, 'source, P, F>
+impl<'parse, P, F, T> ParseIter for MapParseIter<'parse, P, F>
 where
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
     F: Fn(P::Output) -> T,
 {
     type RawOutput = (T,);

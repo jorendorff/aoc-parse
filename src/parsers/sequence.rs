@@ -12,31 +12,34 @@ pub struct SequenceParser<Head, Tail> {
     tail: Tail,
 }
 
-pub struct SequenceParseIter<'parse, 'source, Head, Tail>
+pub struct SequenceParseIter<'parse, Head, Tail>
 where
-    Head: Parser<'parse, 'source>,
-    Tail: Parser<'parse, 'source>,
+    Head: Parser<'parse>,
+    Tail: Parser<'parse>,
 {
     parsers: &'parse SequenceParser<Head, Tail>,
     is_at_start: bool,
-    source: &'source str,
+    source: &'parse str,
     start: usize,
     head_iter: Option<Head::Iter>,
     tail_iter: Option<Tail::Iter>,
 }
 
-impl<'parse, 'source, Head, Tail> Parser<'parse, 'source> for SequenceParser<Head, Tail>
+impl<'parse, Head, Tail> Parser<'parse> for SequenceParser<Head, Tail>
 where
-    Head: Parser<'parse, 'source> + 'parse,
-    Tail: Parser<'parse, 'source> + 'parse,
+    Head: Parser<'parse> + 'parse,
+    Tail: Parser<'parse> + 'parse,
     Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
     type Output =
         <<Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output as ParserOutput>::UserType;
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
-    type Iter = SequenceParseIter<'parse, 'source, Head, Tail>;
+    type Iter = SequenceParseIter<'parse, Head, Tail>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         SequenceParseIter {
             parsers: self,
             is_at_start: true,
@@ -48,10 +51,10 @@ where
     }
 }
 
-impl<'parse, 'source, Head, Tail> ParseIter for SequenceParseIter<'parse, 'source, Head, Tail>
+impl<'parse, Head, Tail> ParseIter for SequenceParseIter<'parse, Head, Tail>
 where
-    Head: Parser<'parse, 'source>,
-    Tail: Parser<'parse, 'source>,
+    Head: Parser<'parse>,
+    Tail: Parser<'parse>,
     Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;

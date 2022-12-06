@@ -26,9 +26,9 @@ impl<T, E> Clone for RegexParser<T, E> {
 
 impl<T, E> Copy for RegexParser<T, E> {}
 
-pub enum RegexParseIter<'parse, 'source, T, E> {
+pub enum RegexParseIter<'parse, T, E> {
     Init {
-        source: &'source str,
+        source: &'parse str,
         start: usize,
         parser: &'parse RegexParser<T, E>,
     },
@@ -37,16 +37,19 @@ pub enum RegexParseIter<'parse, 'source, T, E> {
     },
 }
 
-impl<'parse, 'source, T, E> Parser<'parse, 'source> for RegexParser<T, E>
+impl<'parse, T, E> Parser<'parse> for RegexParser<T, E>
 where
     T: 'static,
     E: Display + 'parse,
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter = RegexParseIter<'parse, 'source, T, E>;
+    type Iter = RegexParseIter<'parse, T, E>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         RegexParseIter::Init {
             source,
             start,
@@ -55,7 +58,7 @@ where
     }
 }
 
-impl<'parse, 'source, T, E> ParseIter for RegexParseIter<'parse, 'source, T, E>
+impl<'parse, T, E> ParseIter for RegexParseIter<'parse, T, E>
 where
     T: Any,
     E: Display,

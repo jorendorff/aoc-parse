@@ -7,23 +7,26 @@ pub struct ExactParser {
     s: &'static str,
 }
 
-pub struct ExactParseIter<'parse, 'source> {
+pub struct ExactParseIter<'parse> {
     expected: &'parse str,
-    input: &'source str,
+    input: &'parse str,
     start: usize,
     done: bool,
 }
 
-impl<'parse, 'source> Parser<'parse, 'source> for ExactParser {
+impl<'parse> Parser<'parse> for ExactParser {
     type Output = ();
     type RawOutput = ();
-    type Iter = ExactParseIter<'parse, 'source>;
+    type Iter = ExactParseIter<'parse>;
 
-    fn parse_iter(
+    fn parse_iter<'source>(
         &'parse self,
         source: &'source str,
         start: usize,
-    ) -> ExactParseIter<'parse, 'source> {
+    ) -> ExactParseIter<'parse>
+    where
+        'source: 'parse,
+    {
         ExactParseIter {
             expected: &self.s,
             input: source,
@@ -33,7 +36,7 @@ impl<'parse, 'source> Parser<'parse, 'source> for ExactParser {
     }
 }
 
-impl<'parse, 'source> ParseIter for ExactParseIter<'parse, 'source> {
+impl<'parse> ParseIter for ExactParseIter<'parse> {
     type RawOutput = ();
 
     fn next_parse(&mut self) -> Option<Result<usize>> {

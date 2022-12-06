@@ -95,16 +95,19 @@ pub struct RegionParser<R: Region, P> {
     phantom: PhantomData<fn() -> R>,
 }
 
-impl<'parse, 'source, R, P> Parser<'parse, 'source> for RegionParser<R, P>
+impl<'parse, R, P> Parser<'parse> for RegionParser<R, P>
 where
     R: Region + 'parse,
-    P: Parser<'parse, 'source> + 'parse,
+    P: Parser<'parse> + 'parse,
 {
     type RawOutput = (P::Output,);
     type Output = P::Output;
-    type Iter = RegionParseIter<'parse, 'source, R, P>;
+    type Iter = RegionParseIter<'parse, R, P>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         RegionParseIter::Init {
             parser: self,
             source,
@@ -113,14 +116,14 @@ where
     }
 }
 
-pub enum RegionParseIter<'parse, 'source, R, P>
+pub enum RegionParseIter<'parse, R, P>
 where
     R: Region,
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     Init {
         parser: &'parse RegionParser<R, P>,
-        source: &'source str,
+        source: &'parse str,
         start: usize,
     },
     Matched {
@@ -129,10 +132,10 @@ where
     Done,
 }
 
-impl<'parse, 'source, R, P> ParseIter for RegionParseIter<'parse, 'source, R, P>
+impl<'parse, R, P> ParseIter for RegionParseIter<'parse, R, P>
 where
     R: Region,
-    P: Parser<'parse, 'source>,
+    P: Parser<'parse>,
 {
     type RawOutput = (P::Output,);
 

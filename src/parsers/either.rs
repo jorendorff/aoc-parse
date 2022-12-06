@@ -16,27 +16,30 @@ pub struct EitherParser<A, B> {
     right: B,
 }
 
-pub struct EitherParseIter<'parse, 'source, A, B>
+pub struct EitherParseIter<'parse, A, B>
 where
-    A: Parser<'parse, 'source>,
-    B: Parser<'parse, 'source>,
+    A: Parser<'parse>,
+    B: Parser<'parse>,
 {
-    source: &'source str,
+    source: &'parse str,
     start: usize,
     parsers: &'parse EitherParser<A, B>,
     iter: Either<A::Iter, B::Iter>,
 }
 
-impl<'parse, 'source, A, B> Parser<'parse, 'source> for EitherParser<A, B>
+impl<'parse, A, B> Parser<'parse> for EitherParser<A, B>
 where
-    A: Parser<'parse, 'source> + 'parse,
-    B: Parser<'parse, 'source> + 'parse,
+    A: Parser<'parse> + 'parse,
+    B: Parser<'parse> + 'parse,
 {
     type Output = Either<A::Output, B::Output>;
     type RawOutput = (Either<A::Output, B::Output>,);
-    type Iter = EitherParseIter<'parse, 'source, A, B>;
+    type Iter = EitherParseIter<'parse, A, B>;
 
-    fn parse_iter(&'parse self, source: &'source str, start: usize) -> Self::Iter {
+    fn parse_iter<'source>(&'parse self, source: &'source str, start: usize) -> Self::Iter
+    where
+        'source: 'parse,
+    {
         EitherParseIter {
             source,
             start,
@@ -46,10 +49,10 @@ where
     }
 }
 
-impl<'parse, 'source, A, B> ParseIter for EitherParseIter<'parse, 'source, A, B>
+impl<'parse, A, B> ParseIter for EitherParseIter<'parse, A, B>
 where
-    A: Parser<'parse, 'source>,
-    B: Parser<'parse, 'source>,
+    A: Parser<'parse>,
+    B: Parser<'parse>,
 {
     type RawOutput = (Either<A::Output, B::Output>,);
 
@@ -104,8 +107,8 @@ pub type AltParser<A, B, T> = MapParser<EitherParser<A, B>, fn(Either<T, T>) -> 
 
 pub fn alt<A, B, T>(left: A, right: B) -> AltParser<A, B, T>
 where
-    A: for<'parse, 'source> Parser<'parse, 'source, Output = T>,
-    B: for<'parse, 'source> Parser<'parse, 'source, Output = T>,
+    A: for<'parse> Parser<'parse, Output = T>,
+    B: for<'parse> Parser<'parse, Output = T>,
 {
     either(left, right).map(|out| match out {
         Either::Left(value) => value,
