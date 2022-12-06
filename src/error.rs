@@ -61,7 +61,7 @@ enum ParseErrorReason {
 }
 
 impl ParseError {
-    pub fn new_extra(source: &str, location: usize) -> Self {
+    pub(crate) fn new_extra(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -69,7 +69,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_bad_line_start(source: &str, location: usize) -> Self {
+    pub(crate) fn new_bad_line_start(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -77,7 +77,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_bad_section_start(source: &str, location: usize) -> Self {
+    pub(crate) fn new_bad_section_start(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -85,7 +85,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_line_extra(source: &str, location: usize) -> Self {
+    pub(crate) fn new_line_extra(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -93,7 +93,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_section_extra(source: &str, location: usize) -> Self {
+    pub(crate) fn new_section_extra(source: &str, location: usize) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -101,7 +101,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_expected(source: &str, location: usize, expected: &str) -> Self {
+    pub(crate) fn new_expected(source: &str, location: usize, expected: &str) -> Self {
         ParseError {
             source: source.to_string(),
             location,
@@ -109,7 +109,7 @@ impl ParseError {
         }
     }
 
-    pub fn new_from_str_failed(
+    pub(crate) fn new_from_str_failed(
         source: &str,
         start: usize,
         end: usize,
