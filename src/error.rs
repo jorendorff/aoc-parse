@@ -58,8 +58,6 @@ enum ParseErrorReason {
         type_name: &'static str,
         message: String,
     },
-    #[error("nothing matches this pattern")]
-    CannotMatch,
 }
 
 impl ParseError {
@@ -126,14 +124,6 @@ impl ParseError {
                 type_name,
                 message,
             },
-        }
-    }
-
-    pub fn new_cannot_match(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::CannotMatch,
         }
     }
 
