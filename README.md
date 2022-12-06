@@ -206,6 +206,58 @@ Lines and sections:
 
     Equivalent to <code>line(<var>pattern</var>)*</code>.
 
+    ```
+    # use aoc_parse::{parser, prelude::*};
+    let p = parser!(lines(repeat_sep(digit, " ")));
+    assert_eq!(
+        p.parse("1 2 3\n4 5 6\n").unwrap(),
+        vec![vec![1, 2, 3], vec![4, 5, 6]],
+    );
+    ```
+
+*   <code>section(<var>pattern</var>)</code> - Matches zero or more nonblank lines,
+    followed by either a blank line or the end of input. The nonblank lines must match
+    *pattern*.
+
+    `section()` consumes the blank line. *pattern* should not expect to see it.
+
+    It's common for an AoC puzzle input to have several lines of data, then
+    a blank line, and then a different kind of data. You can parse this with
+    <code>section(<var>p1</var>) section(<var>p2</var>)</code>.
+
+    `section(lines(u64))` matches a section that's a list of numbers, one per line.
+
+*   <code>sections(<var>pattern</var>)</code> - Matches any number of sections
+    matching *pattern*. Equivalent to <code>section(<var>pattern</var>)*</code>
+
+    Bringing it all together to parse a complex example:
+
+    ```
+    # use aoc_parse::{parser, prelude::*};
+    let example = "\
+    Wiring Diagram #1:
+    a->q->E->z->J
+    D->f->D
+
+    Wiring Diagram #2:
+    g->r->f
+    g->B
+    ";
+
+    let p = parser!(sections(
+        line("Wiring Diagram #" usize ":")
+        lines(repeat_sep(alpha, "->"))
+    ));
+    assert_eq!(
+        p.parse(example).unwrap(),
+        vec![
+            (1, vec![vec!['a', 'q', 'E', 'z', 'J'], vec!['D', 'f', 'D']]),
+            (2, vec![vec!['g', 'r', 'f'], vec!['g', 'B']]),
+        ],
+    );
+
+
+
 [AoC]: https://adventofcode.com/
 [example]: https://adventofcode.com/2015/day/2
 [aoc-runner]: https://lib.rs/crates/aoc-runner
