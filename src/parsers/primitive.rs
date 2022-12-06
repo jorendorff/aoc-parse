@@ -31,6 +31,8 @@ regexes! {
 macro_rules! from_str_parse_impl {
         ( $( $ty:ident )+ , $re_name:ident) => {
             $(
+                /// Parse a value of a primitive type (using its `FromStr`
+                /// implementation in the Rust standard library).
                 #[allow(non_upper_case_globals)]
                 pub const $ty: RegexParser<$ty, <$ty as FromStr>::Err> =
                     RegexParser {
@@ -48,12 +50,16 @@ from_str_parse_impl!(bool, bool_regex);
 macro_rules! from_str_radix_parsers {
     ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* : $re_name:ident ) => {
         $(
+            /// Parse an integer written in base 2, using the `from_str_radix`
+            /// static method from the Rust standard library.
             #[allow(non_upper_case_globals)]
             pub const $bin: RegexParser<$ty, ParseIntError> = RegexParser {
                 regex: $re_name,
                 parse_fn: |s| $ty::from_str_radix(s, 2),
             };
 
+            /// Parse an integer written in base 16, using the `from_str_radix`
+            /// static method from the Rust standard library.
             #[allow(non_upper_case_globals)]
             pub const $hex: RegexParser<$ty, ParseIntError> = RegexParser {
                 regex: $re_name,

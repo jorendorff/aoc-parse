@@ -1,9 +1,17 @@
 use thiserror::Error;
 
+/// An error happened while trying to parse puzzle input or convert the matched
+/// characters to a Rust value.
 #[derive(Clone)]
 pub struct ParseError {
+    /// The puzzle input we were trying to parse.
     pub source: String,
+
+    /// The byte offset into `source` where the elves detected a problem and
+    /// could not go any further. This is guaranteed to be a char boundary in
+    /// `source`.
     pub location: usize,
+
     reason: ParseErrorReason,
 }
 
@@ -127,10 +135,10 @@ impl ParseError {
         }
     }
 
-    // This is used when a subparser is used on a slice of the original string.
-    // If the subparse fails, the error location is a position within the slice.
-    // This can be used, passing the start offset of the slice, to convert that
-    // to a position within the original string.
+    /// This is used when a subparser is used on a slice of the original
+    /// string. If the subparse fails, the error location is a position within
+    /// the slice. This can be used, passing the start offset of the slice, to
+    /// convert that to a position within the original string.
     pub(crate) fn adjust_location(&mut self, offset: usize) {
         self.location += offset;
     }

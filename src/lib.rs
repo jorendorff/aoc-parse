@@ -269,8 +269,11 @@
 //! [example]: https://adventofcode.com/2015/day/2
 //! [aoc-runner]: https://lib.rs/crates/aoc-runner
 
+#![deny(missing_docs)]
+
 mod error;
 pub mod functions;
+#[doc(hidden)]
 pub mod macros;
 mod parsers;
 mod types;
@@ -280,6 +283,15 @@ use error::Result;
 pub use parsers::{ParseIter, Parser};
 use types::ParserOutput;
 
+/// A giant sack of toys and goodies to import along with `Parser`.
+///
+/// The `parser!()` macro will work fine without this, so you can explicitly
+/// import the names you want to use instead of doing `use aoc_parse::{parser,
+/// prelude::*};`.
+///
+/// This includes some constants that have the same name as a built-in Rust
+/// type: `i32`, `usize`, `bool`, and so on. There's no conflict because Rust
+/// types and constants live in separate namespaces.
 pub mod prelude {
     pub use crate::functions::{line, lines, repeat_sep, section, sections, string};
     pub use crate::parsers::{
