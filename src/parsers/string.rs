@@ -9,23 +9,25 @@ pub struct StringParser<P> {
 
 pub struct StringParseIter<'parse, P>
 where
-    P: Parser<'parse>,
+    P: Parser + 'parse,
 {
     source: &'parse str,
     start: usize,
     end: usize,
-    iter: P::Iter,
+    iter: P::Iter<'parse>,
 }
 
-impl<'parse, P> Parser<'parse> for StringParser<P>
+impl<P> Parser for StringParser<P>
 where
-    P: Parser<'parse>,
+    P: Parser,
 {
     type Output = String;
     type RawOutput = (String,);
-    type Iter = StringParseIter<'parse, P>;
+    type Iter<'parse> = StringParseIter<'parse, P>
+    where
+        P: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         StringParseIter {
             source,
             start,
@@ -37,7 +39,7 @@ where
 
 impl<'parse, P> ParseIter for StringParseIter<'parse, P>
 where
-    P: Parser<'parse>,
+    P: Parser,
 {
     type RawOutput = (String,);
 

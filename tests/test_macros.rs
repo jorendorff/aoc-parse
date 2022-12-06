@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use aoc_parse::{parser, prelude::*};
 
 #[track_caller]
-fn assert_parse<'s, P>(parser: &'s P, s: &'s str)
+fn assert_parse<P>(parser: &P, s: &str)
 where
-    P: Parser<'s>,
+    P: Parser,
 {
     if let Err(err) = parser.parse(s) {
         panic!("parse failed: {}", err);
@@ -13,9 +13,9 @@ where
 }
 
 #[track_caller]
-fn assert_parse_eq<'s, P, E>(parser: &'s P, s: &'s str, expected: E)
+fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
 where
-    P: Parser<'s>,
+    P: Parser,
     P::Output: PartialEq<E> + Debug,
     E: Debug,
 {
@@ -26,9 +26,9 @@ where
 }
 
 #[track_caller]
-fn assert_no_parse<'s, P>(parser: &'s P, s: &'s str)
+fn assert_no_parse<P>(parser: &P, s: &str)
 where
-    P: Parser<'s>,
+    P: Parser,
     P::Output: Debug,
 {
     if let Ok(m) = parser.parse(s) {

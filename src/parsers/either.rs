@@ -18,25 +18,28 @@ pub struct EitherParser<A, B> {
 
 pub struct EitherParseIter<'parse, A, B>
 where
-    A: Parser<'parse>,
-    B: Parser<'parse>,
+    A: Parser + 'parse,
+    B: Parser + 'parse,
 {
     source: &'parse str,
     start: usize,
     parsers: &'parse EitherParser<A, B>,
-    iter: Either<A::Iter, B::Iter>,
+    iter: Either<A::Iter<'parse>, B::Iter<'parse>>,
 }
 
-impl<'parse, A, B> Parser<'parse> for EitherParser<A, B>
+impl<A, B> Parser for EitherParser<A, B>
 where
-    A: Parser<'parse> + 'parse,
-    B: Parser<'parse> + 'parse,
+    A: Parser,
+    B: Parser,
 {
     type Output = Either<A::Output, B::Output>;
     type RawOutput = (Either<A::Output, B::Output>,);
-    type Iter = EitherParseIter<'parse, A, B>;
+    type Iter<'parse> = EitherParseIter<'parse, A, B>
+    where
+        A: 'parse,
+        B: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         EitherParseIter {
             source,
             start,
@@ -48,8 +51,8 @@ where
 
 impl<'parse, A, B> ParseIter for EitherParseIter<'parse, A, B>
 where
-    A: Parser<'parse>,
-    B: Parser<'parse>,
+    A: Parser,
+    B: Parser,
 {
     type RawOutput = (Either<A::Output, B::Output>,);
 
@@ -104,8 +107,8 @@ pub type AltParser<A, B, T> = MapParser<EitherParser<A, B>, fn(Either<T, T>) -> 
 
 pub fn alt<A, B, T>(left: A, right: B) -> AltParser<A, B, T>
 where
-    A: for<'parse> Parser<'parse, Output = T>,
-    B: for<'parse> Parser<'parse, Output = T>,
+    A: Parser<Output = T>,
+    B: Parser<Output = T>,
 {
     either(left, right).map(|out| match out {
         Either::Left(value) => value,

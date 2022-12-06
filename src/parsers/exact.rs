@@ -14,12 +14,16 @@ pub struct ExactParseIter<'parse> {
     done: bool,
 }
 
-impl<'parse> Parser<'parse> for ExactParser {
+impl Parser for ExactParser {
     type Output = ();
     type RawOutput = ();
-    type Iter = ExactParseIter<'parse>;
+    type Iter<'parse> = ExactParseIter<'parse>;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> ExactParseIter<'parse> {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> ExactParseIter<'parse> {
         ExactParseIter {
             expected: &self.s,
             input: source,

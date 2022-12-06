@@ -5,12 +5,12 @@ use crate::{error::Result, ParseIter, Parser};
 #[derive(Clone, Copy)]
 pub struct EmptyParser;
 
-impl<'parse> Parser<'parse> for EmptyParser {
+impl Parser for EmptyParser {
     type Output = ();
     type RawOutput = ();
-    type Iter = EmptyParseIter;
+    type Iter<'parse> = EmptyParseIter;
 
-    fn parse_iter(&'parse self, _source: &'parse str, start: usize) -> EmptyParseIter {
+    fn parse_iter(&self, _source: &str, start: usize) -> EmptyParseIter {
         EmptyParseIter {
             used: false,
             location: start,

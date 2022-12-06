@@ -18,26 +18,29 @@ pub struct RepeatParser<Pattern, Sep> {
 
 pub struct RepeatParseIter<'parse, Pattern, Sep>
 where
-    Pattern: Parser<'parse>,
-    Sep: Parser<'parse>,
+    Pattern: Parser + 'parse,
+    Sep: Parser + 'parse,
 {
     source: &'parse str,
     params: &'parse RepeatParser<Pattern, Sep>,
-    pattern_iters: Vec<Pattern::Iter>,
-    sep_iters: Vec<Sep::Iter>,
+    pattern_iters: Vec<Pattern::Iter<'parse>>,
+    sep_iters: Vec<Sep::Iter<'parse>>,
     starts: Vec<usize>,
 }
 
-impl<'parse, Pattern, Sep> Parser<'parse> for RepeatParser<Pattern, Sep>
+impl<Pattern, Sep> Parser for RepeatParser<Pattern, Sep>
 where
-    Pattern: Parser<'parse> + 'parse,
-    Sep: Parser<'parse> + 'parse,
+    Pattern: Parser,
+    Sep: Parser,
 {
     type Output = Vec<Pattern::Output>;
     type RawOutput = (Vec<Pattern::Output>,);
-    type Iter = RepeatParseIter<'parse, Pattern, Sep>;
+    type Iter<'parse> = RepeatParseIter<'parse, Pattern, Sep>
+    where
+        Pattern: 'parse,
+        Sep: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         RepeatParseIter {
             source,
             params: self,
@@ -63,8 +66,8 @@ impl<Pattern, Sep> RepeatParser<Pattern, Sep> {
 
 impl<'parse, Pattern, Sep> ParseIter for RepeatParseIter<'parse, Pattern, Sep>
 where
-    Pattern: Parser<'parse> + 'parse,
-    Sep: Parser<'parse> + 'parse,
+    Pattern: Parser,
+    Sep: Parser,
 {
     type RawOutput = (Vec<Pattern::Output>,);
 

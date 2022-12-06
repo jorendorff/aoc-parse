@@ -37,16 +37,18 @@ pub enum RegexParseIter<'parse, T, E> {
     },
 }
 
-impl<'parse, T, E> Parser<'parse> for RegexParser<T, E>
+impl<T, E> Parser for RegexParser<T, E>
 where
-    T: 'static,
-    E: Display + 'parse,
+    T: Any,
+    E: Display,
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter = RegexParseIter<'parse, T, E>;
+    type Iter<'parse> = RegexParseIter<'parse, T, E>
+    where
+        E: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         RegexParseIter::Init {
             source,
             start,

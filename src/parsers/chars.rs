@@ -17,12 +17,12 @@ pub enum CharParseIter<'parse> {
     Error,
 }
 
-impl<'parse> Parser<'parse> for CharParser {
+impl Parser for CharParser {
     type Output = char;
     type RawOutput = (char,);
-    type Iter = CharParseIter<'parse>;
+    type Iter<'parse> = CharParseIter<'parse>;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         CharParseIter::Before {
             parser: self,
             source,

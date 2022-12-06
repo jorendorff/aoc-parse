@@ -14,29 +14,32 @@ pub struct SequenceParser<Head, Tail> {
 
 pub struct SequenceParseIter<'parse, Head, Tail>
 where
-    Head: Parser<'parse>,
-    Tail: Parser<'parse>,
+    Head: Parser + 'parse,
+    Tail: Parser + 'parse,
 {
     parsers: &'parse SequenceParser<Head, Tail>,
     is_at_start: bool,
     source: &'parse str,
     start: usize,
-    head_iter: Option<Head::Iter>,
-    tail_iter: Option<Tail::Iter>,
+    head_iter: Option<Head::Iter<'parse>>,
+    tail_iter: Option<Tail::Iter<'parse>>,
 }
 
-impl<'parse, Head, Tail> Parser<'parse> for SequenceParser<Head, Tail>
+impl<Head, Tail> Parser for SequenceParser<Head, Tail>
 where
-    Head: Parser<'parse> + 'parse,
-    Tail: Parser<'parse> + 'parse,
+    Head: Parser,
+    Tail: Parser,
     Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
     type Output =
         <<Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output as ParserOutput>::UserType;
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
-    type Iter = SequenceParseIter<'parse, Head, Tail>;
+    type Iter<'parse> = SequenceParseIter<'parse, Head, Tail>
+    where
+        Head: 'parse,
+        Tail: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
         SequenceParseIter {
             parsers: self,
             is_at_start: true,
@@ -50,8 +53,8 @@ where
 
 impl<'parse, Head, Tail> ParseIter for SequenceParseIter<'parse, Head, Tail>
 where
-    Head: Parser<'parse>,
-    Tail: Parser<'parse>,
+    Head: Parser,
+    Tail: Parser,
     Head::RawOutput: RawOutputConcat<Tail::RawOutput>,
 {
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;

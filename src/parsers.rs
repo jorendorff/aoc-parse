@@ -6,7 +6,7 @@ use crate::{ParseError, ParserOutput, Result};
 /// user-defined parsers created with `parser!`.
 ///
 /// To run a parser, pass some text to [the `parse` method][Parser::parse].
-pub trait Parser<'parse> {
+pub trait Parser {
     /// The type of value this parser produces from text.
     type Output;
 
@@ -25,7 +25,9 @@ pub trait Parser<'parse> {
 
     /// The type that implements matching, backtracking, and type conversion
     /// for this parser, an implementation detail.
-    type Iter: ParseIter<RawOutput = Self::RawOutput>;
+    type Iter<'parse>: ParseIter<RawOutput = Self::RawOutput>
+    where
+        Self: 'parse;
 
     /// Fully parse the given source string `s` and return the resulting value.
     ///
@@ -33,16 +35,16 @@ pub trait Parser<'parse> {
     ///
     /// This succeeds only if this parser matches the entire input string. It's
     /// an error if any unmatched characters are left over at the end of `s`.
-    fn parse(&'parse self, s: &'parse str) -> Result<Self::Output> {
+    fn parse(&self, s: &str) -> Result<Self::Output> {
         self.parse_raw(s).map(|v| v.into_user_type())
     }
 
     /// Produce a [parse iterator][ParseIter]. This is an internal implementation detail of
     /// the parser and shouldn't normally be called directly from application code.
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter;
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse>;
 
     /// Like `parse` but produce the output in its [raw form][Self::RawOutput].
-    fn parse_raw(&'parse self, s: &'parse str) -> Result<Self::RawOutput> {
+    fn parse_raw(&self, s: &str) -> Result<Self::RawOutput> {
         let mut it = self.parse_iter(s, 0);
         let mut best_end: Option<usize> = None;
         while let Some(parse) = it.next_parse() {
@@ -101,17 +103,19 @@ pub trait Parser<'parse> {
     }
 }
 
-impl<'a, 'parse, P> Parser<'parse> for &'a P
+impl<'a, P> Parser for &'a P
 where
-    P: Parser<'parse>,
-    'a: 'parse,
+    P: Parser,
 {
-    type Iter = P::Iter;
     type Output = P::Output;
     type RawOutput = P::RawOutput;
+    type Iter<'parse> = P::Iter<'parse>
+    where
+        P: 'parse,
+        'a: 'parse;
 
-    fn parse_iter(&'parse self, source: &'parse str, start: usize) -> Self::Iter {
-        <P as Parser<'parse>>::parse_iter(self, source, start)
+    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
+        <P as Parser>::parse_iter(self, source, start)
     }
 }
 
@@ -136,10 +140,10 @@ where
 /// ```
 ///
 /// [bad]: https://github.com/gobanos/aoc-runner/blob/master/src/lib.rs#L17
-pub fn aoc_parse<P, T, E>(puzzle_input: &str, parser: P) -> std::result::Result<T, E>
+pub fn aoc_parse<P, E>(puzzle_input: &str, parser: P) -> std::result::Result<P::Output, E>
 where
+    P: Parser,
     E: From<ParseError>,
-    P: for<'p> Parser<'p, Output = T>,
 {
     let mut p = puzzle_input.to_string();
     if !p.ends_with('\n') {
@@ -213,8 +217,8 @@ pub use string::StringParser;
 // --- Wrappers
 
 pub fn opt<T>(
-    pattern: impl for<'parse> Parser<'parse, Output = T> + 'static,
-) -> impl for<'parse> Parser<'parse, Output = Option<T>, RawOutput = (Option<T>,)> {
+    pattern: impl Parser<Output = T> + 'static,
+) -> impl Parser<Output = Option<T>, RawOutput = (Option<T>,)> {
     either(pattern, empty()).map(|e: Either<T, ()>| match e {
         Either::Left(left) => Some(left),
         Either::Right(()) => None,
@@ -239,9 +243,9 @@ pub fn opt<T>(
 //
 // It turns out all we need is to ensure the `RawOutput` type of the
 // parenthesized parser is a singleton tuple type.
-pub fn parenthesize<A, T>(pattern: A) -> MapParser<A, fn(T) -> T>
+pub fn parenthesize<P>(pattern: P) -> MapParser<P, fn(P::Output) -> P::Output>
 where
-    A: for<'parse> Parser<'parse, Output = T>,
+    P: Parser,
 {
     pattern.map(|val| val)
 }
@@ -253,9 +257,9 @@ mod tests {
     use super::*;
 
     #[track_caller]
-    fn assert_parse<'s, P>(parser: &'s P, s: &'s str)
+    fn assert_parse<P>(parser: &P, s: &str)
     where
-        P: Parser<'s>,
+        P: Parser,
     {
         if let Err(err) = parser.parse(s) {
             panic!("parse failed: {}", err);
@@ -263,9 +267,9 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_parse_eq<'s, P, E>(parser: &'s P, s: &'s str, expected: E)
+    fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
     where
-        P: Parser<'s>,
+        P: Parser,
         P::Output: PartialEq<E> + Debug,
         E: Debug,
     {
@@ -276,9 +280,9 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_no_parse<'s, P>(parser: &'s P, s: &'s str)
+    fn assert_no_parse<P>(parser: &P, s: &str)
     where
-        P: Parser<'s>,
+        P: Parser,
         P::Output: Debug,
     {
         if let Ok(m) = parser.parse(s) {

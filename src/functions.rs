@@ -18,9 +18,9 @@ pub trait ParserFunction<Args> {
 
 pub struct line;
 
-impl<'parse, T> ParserFunction<(T,)> for line
+impl<T> ParserFunction<(T,)> for line
 where
-    T: Parser<'parse>,
+    T: Parser,
 {
     type Output = LineParser<T>;
 
@@ -31,9 +31,9 @@ where
 
 pub struct lines;
 
-impl<'parse, T> ParserFunction<(T,)> for lines
+impl<T> ParserFunction<(T,)> for lines
 where
-    T: Parser<'parse>,
+    T: Parser,
 {
     type Output = RepeatParser<LineParser<T>, EmptyParser>;
 
@@ -44,9 +44,9 @@ where
 
 pub struct section;
 
-impl<'parse, T> ParserFunction<(T,)> for section
+impl<T> ParserFunction<(T,)> for section
 where
-    T: Parser<'parse>,
+    T: Parser,
 {
     type Output = SectionParser<T>;
 
@@ -57,9 +57,9 @@ where
 
 pub struct sections;
 
-impl<'parse, T> ParserFunction<(T,)> for sections
+impl<T> ParserFunction<(T,)> for sections
 where
-    T: Parser<'parse>,
+    T: Parser,
 {
     type Output = RepeatParser<SectionParser<T>, EmptyParser>;
 
@@ -70,10 +70,10 @@ where
 
 pub struct repeat_sep;
 
-impl<'parse, T, U> ParserFunction<(T, U)> for repeat_sep
+impl<T, U> ParserFunction<(T, U)> for repeat_sep
 where
-    T: Parser<'parse>,
-    U: Parser<'parse>,
+    T: Parser,
+    U: Parser,
 {
     type Output = RepeatParser<T, U>;
 
@@ -84,9 +84,9 @@ where
 
 pub struct string;
 
-impl<'parse, P> ParserFunction<(P,)> for string
+impl<P> ParserFunction<(P,)> for string
 where
-    P: Parser<'parse>,
+    P: Parser,
 {
     type Output = StringParser<P>;
 
