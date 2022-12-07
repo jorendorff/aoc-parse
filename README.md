@@ -233,7 +233,6 @@ Lines and sections:
     Bringing it all together to parse a complex example:
 
     ```
-    # use aoc_parse::{parser, prelude::*};
     let example = "\
     Wiring Diagram #1:
     a->q->E->z->J
