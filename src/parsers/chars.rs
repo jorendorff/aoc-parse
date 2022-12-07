@@ -2,6 +2,7 @@ use crate::parsers::MapParser;
 use crate::{ParseError, ParseIter, Parser, Result};
 
 #[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
 pub struct CharParser {
     noun: &'static str,
     predicate: fn(char) -> bool,
