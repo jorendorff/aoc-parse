@@ -169,10 +169,10 @@ Custom conversion:
 
     ```
     let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
-    let line_parser = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
+    let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
 
     assert_eq!(
-        line_parser.parse("(3,66)-(27,8)").unwrap(),
+        line.parse("(3,66)-(27,8)").unwrap(),
         Line { p1: Point(3, 66), p2: Point(27, 8) },
     );
     ```

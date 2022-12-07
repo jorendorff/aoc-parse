@@ -177,10 +177,10 @@
 //!     #     p2: Point,
 //!     # }
 //!     let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
-//!     let line_parser = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
+//!     let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
 //!
 //!     assert_eq!(
-//!         line_parser.parse("(3,66)-(27,8)").unwrap(),
+//!         line.parse("(3,66)-(27,8)").unwrap(),
 //!         Line { p1: Point(3, 66), p2: Point(27, 8) },
 //!     );
 //!     ```
@@ -272,7 +272,6 @@
 #![deny(missing_docs)]
 
 mod error;
-pub mod functions;
 #[doc(hidden)]
 pub mod macros;
 mod parsers;
@@ -293,12 +292,24 @@ use types::ParserOutput;
 /// type: `i32`, `usize`, `bool`, and so on. There's no conflict because Rust
 /// types and constants live in separate namespaces.
 pub mod prelude {
-    pub use crate::functions::{line, lines, repeat_sep, section, sections, string};
+    pub use crate::parsers::{aoc_parse, Parser};
+
     pub use crate::parsers::{
-        alnum, alpha, any_char, aoc_parse, bool, digit, digit_bin, digit_hex, i128, i128_bin,
-        i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin,
-        i8_hex, isize, isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin,
-        u16_hex, u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize,
-        usize_bin, usize_hex, Parser,
+        alnum, alpha, any_char, bool, digit, digit_bin, digit_hex, i128, i128_bin, i128_hex, i16,
+        i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin, i8_hex, isize,
+        isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin, u16_hex, u32, u32_bin,
+        u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize, usize_bin, usize_hex,
     };
+
+    pub use crate::parsers::{line, lines, repeat_sep, section, sections};
+
+    /// Parse using `parser`, but instead of converting the matched text to a
+    /// Rust value, simply return it as a `String`.
+    ///
+    /// By default, `parser!(alpha+)` returns a `Vec<char>`, and sometimes that
+    /// is handy in AoC, but often it's better to have it return a `String`.
+    /// That can be done with `parser!(string(alpha+))`.
+    pub fn string<P: Parser>(parser: P) -> crate::parsers::StringParser<P> {
+        crate::parsers::StringParser { parser }
+    }
 }

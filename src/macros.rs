@@ -146,10 +146,7 @@ macro_rules! parser {
             @seq $label
             [ $($tail)* ]
             [
-                $crate::functions::ParserFunction::call_parser_function(
-                    &$f,
-                    ( $crate::parser!(@args [$($args)*] [] ()) ),
-                )
+                $crate::parser!(@args ( $f ) [ $( $args )* ] [] ())
                 ,
                 $($stack ,)*
             ]
@@ -257,14 +254,15 @@ macro_rules! parser {
         $crate::parser!(@list [ $( $nested )* ] [ ] [ ])
     };
 
-    // parser!(@args [unexamined input tokens] [current argument holding area] [transformed output argument exprs])
+    // parser!(@args fn_expr [unexamined input tokens] [current argument holding area] [transformed output argument exprs])
     //
     // Transform argument lists.
 
     // end of an argument in an argument list
-    (@args [ , $($tail:tt)* ] [ $($seq:tt)* ] ( $( $arg:expr , )* )) => {
+    (@args ( $f:expr ) [ , $($tail:tt)* ] [ $($seq:tt)* ] ( $( $arg:expr , )* )) => {
         $crate::parser!(
             @args
+            ( $f )
             [ $( $tail )* ]
             [ ]
             (
@@ -275,9 +273,10 @@ macro_rules! parser {
     };
 
     // not the end of an arg; just move a token from the input to the holding area
-    (@args [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] ( $( $out:expr , )* )) => {
+    (@args ( $f:expr ) [ $next:tt $($tail:tt)* ] [ $($seq:tt)* ] ( $( $out:expr , )* )) => {
         $crate::parser!(
             @args
+            ( $f )
             [ $( $tail )* ]
             [ $( $seq )* $next ]
             ( $( $out , )* )
@@ -285,13 +284,13 @@ macro_rules! parser {
     };
 
     // end of argument list, after trailing comma or empty
-    (@args [] [] $out:expr) => {
-        $out
+    (@args ( $f:expr ) [] [] ( $( $out:expr , )* )) => {
+        $f ( $( $out , )* )
     };
 
     // end of argument list with no trailing comma: infer one
-    (@args [] [ $($seq:tt)+ ] ( $( $out:expr , )* )) => {
-        $crate::parser!(@args [,] [ $($seq)+ ] ( $( $out , )* ))
+    (@args ( $f:expr ) [] [ $($seq:tt)+ ] ( $( $out:expr , )* )) => {
+        $crate::parser!(@args ( $f ) [,] [ $($seq)+ ] ( $( $out , )* ))
     };
 
     // parser!(@list [unexamined input tokens] [current arm holding area] [transformed output arm parser expressions])

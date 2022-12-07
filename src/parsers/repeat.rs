@@ -177,8 +177,13 @@ pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 1, None, false)
 }
 
-// Used by `aoc_parse::functions::repeat_sep`.
-#[doc(hidden)]
+/// <code>repeat_sep(<var>pattern</var>, <var>separator</var>)</code> matches
+/// the given *pattern* any number of times, separated by the *separator*. For
+/// example, `parser!(repeat_sep(i32, ","))` matches a list of comma-separated
+/// integers.
+///
+/// This converts only the bits that match *pattern* to Rust values, producing
+/// a `Vec`. Any parts of the string matched by *separator* are not converted.
 pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
     repeat(pattern, sep, 0, None, false)
 }

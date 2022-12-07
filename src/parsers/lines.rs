@@ -200,8 +200,17 @@ where
 pub type LineParser<P> = RegionParser<Line, P>;
 pub type SectionParser<P> = RegionParser<Section, P>;
 
-// Used to implement `aoc_parse::functions::line`.
-#[doc(hidden)]
+/// <code>line(<var>pattern</var>)</code> matches a single line of text that
+/// matches *pattern*, and the newline at the end of the line.
+///
+/// This is like <code>^<var>pattern</var>\n</code> in regular expressions,
+/// except <code>line(<var>pattern</var>)</code> will only ever match exactly
+/// one line of text, even if *pattern* could match more newlines.
+///
+/// `line(string(any_char+))` matches a line of text, strips off the newline
+/// character, and returns the rest as a `String`.
+///
+/// `line("")` matches a blank line.
 pub fn line<P>(parser: P) -> LineParser<P> {
     LineParser {
         parser,
@@ -209,14 +218,35 @@ pub fn line<P>(parser: P) -> LineParser<P> {
     }
 }
 
-// Used to implement `aoc_parse::functions::lines`.
-#[doc(hidden)]
+/// <code>lines(<var>pattern</var>)</code> matches any number of lines of text
+/// matching *pattern*. Each line must be terminated by a newline, `'\n'`.
+///
+/// Equivalent to <code>line(<var>pattern</var>)*</code>.
+///
+/// ```
+/// # use aoc_parse::{parser, prelude::*};
+/// let p = parser!(lines(repeat_sep(digit, " ")));
+/// assert_eq!(
+///     p.parse("1 2 3\n4 5 6\n").unwrap(),
+///     vec![vec![1, 2, 3], vec![4, 5, 6]],
+/// );
+/// ```
 pub fn lines<P>(parser: P) -> RepeatParser<LineParser<P>, EmptyParser> {
     star(line(parser))
 }
 
-// Used to implement `aoc_parse::functions::section`.
-#[doc(hidden)]
+/// <code>section(<var>pattern</var>)</code> matches zero or more nonblank
+/// lines, followed by either a blank line or the end of input. The nonblank
+/// lines must match *pattern*.
+///
+/// `section()` consumes the blank line. *pattern* should not expect to see it.
+///
+/// It's common for an AoC puzzle input to have several lines of data, then a
+/// blank line, and then a different kind of data. You can parse this with
+/// <code>section(<var>p1</var>) section(<var>p2</var>)</code>.
+///
+/// `section(lines(u64))` matches a section that's a list of numbers, one per
+/// line.
 pub fn section<P>(parser: P) -> SectionParser<P> {
     SectionParser {
         parser,
@@ -224,8 +254,9 @@ pub fn section<P>(parser: P) -> SectionParser<P> {
     }
 }
 
-// Used to implement `aoc_parse::functions::sections`.
-#[doc(hidden)]
+/// <code>sections(<var>pattern</var>)</code> matches any number of sections
+/// matching *pattern*. Equivalent to
+/// <code>section(<var>pattern</var>)*</code>.
 pub fn sections<P>(parser: P) -> RepeatParser<SectionParser<P>, EmptyParser> {
     star(section(parser))
 }
