@@ -21,8 +21,8 @@ macro_rules! regexes {
     }
 
 regexes! {
-    uint_regex = r"\A(0|[1-9][0-9]*)";
-    int_regex = r"\A(?:0|[+-]?[1-9][0-9]*)";
+    uint_regex = r"\A[0-9]+";
+    int_regex = r"\A[+-]?[0-9]+";
     bool_regex = r"true|false";
     uint_bin_regex = r"\A[01]+";
     int_bin_regex = r"\A[+-]?[01]+";
