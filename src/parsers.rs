@@ -140,7 +140,7 @@ where
 /// ```
 ///
 /// [bad]: https://github.com/gobanos/aoc-runner/blob/master/src/lib.rs#L17
-pub fn aoc_parse<P, E>(puzzle_input: &str, parser: P) -> std::result::Result<P::Output, E>
+pub fn aoc_parse<P, E>(puzzle_input: &str, parser: P) -> Result<P::Output, E>
 where
     P: Parser,
     E: From<ParseError>,

@@ -11,7 +11,7 @@ use crate::{error::Result, ParseError, ParseIter, Parser};
 
 pub struct RegexParser<T, E> {
     pub(crate) regex: fn() -> &'static Regex,
-    pub(crate) parse_fn: fn(&str) -> std::result::Result<T, E>,
+    pub(crate) parse_fn: fn(&str) -> Result<T, E>,
 }
 
 // Manual Clone impl because `#[derive(Clone)]` is buggy in this case.

@@ -144,4 +144,4 @@ impl ParseError {
     }
 }
 
-pub(crate) type Result<T> = std::result::Result<T, ParseError>;
+pub(crate) type Result<T, E = ParseError> = std::result::Result<T, E>;
