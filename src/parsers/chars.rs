@@ -8,63 +8,44 @@ pub struct CharParser {
     predicate: fn(char) -> bool,
 }
 
-pub enum CharParseIter<'parse> {
-    Before {
-        parser: &'parse CharParser,
-        source: &'parse str,
-        start: usize,
-    },
-    Success(char),
-    Error,
+pub struct CharParseIter {
+    c: char,
+    end: Option<usize>,
 }
 
 impl Parser for CharParser {
     type Output = char;
     type RawOutput = (char,);
-    type Iter<'parse> = CharParseIter<'parse>;
+    type Iter<'parse> = CharParseIter;
 
     fn parse_iter<'parse>(
         &'parse self,
         source: &'parse str,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        Ok(CharParseIter::Before {
-            parser: self,
-            source,
-            start,
-        })
+        match source[start..].chars().next() {
+            Some(c) if (self.predicate)(c) => Ok(CharParseIter {
+                c,
+                end: Some(start + c.len_utf8()),
+            }),
+            _ => Err(ParseError::new_expected(source, start, self.noun)),
+        }
     }
 }
 
-impl<'parse> ParseIter for CharParseIter<'parse> {
+impl ParseIter for CharParseIter {
     type RawOutput = (char,);
     fn next_parse(&mut self) -> Option<Result<usize>> {
-        if let CharParseIter::Before {
-            parser,
-            source,
-            start,
-        } = *self
-        {
-            match source[start..].chars().next() {
-                Some(c) if (parser.predicate)(c) => {
-                    *self = CharParseIter::Success(c);
-                    Some(Ok(start + c.len_utf8()))
-                }
-                _ => {
-                    *self = CharParseIter::Error;
-                    Some(Err(ParseError::new_expected(source, start, parser.noun)))
-                }
-            }
+        if let Some(end) = self.end {
+            self.end = None;
+            Some(Ok(end))
         } else {
             None
         }
     }
 
     fn take_data(&mut self) -> (char,) {
-        match self {
-            CharParseIter::Success(c) => (*c,),
-            _ => panic!("invalid state"),
-        }
+        (self.c,)
     }
 }
 

@@ -18,9 +18,7 @@ where
     Tail: Parser + 'parse,
 {
     parsers: &'parse SequenceParser<Head, Tail>,
-    is_at_start: bool,
     source: &'parse str,
-    start: usize,
     head_iter: Option<Head::Iter<'parse>>,
     tail_iter: Option<Tail::Iter<'parse>>,
 }
@@ -44,12 +42,11 @@ where
         source: &'parse str,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
+        let iter = self.head.parse_iter(source, start)?;
         Ok(SequenceParseIter {
             parsers: self,
-            is_at_start: true,
             source,
-            start,
-            head_iter: None,
+            head_iter: Some(iter),
             tail_iter: None,
         })
     }
@@ -95,15 +92,6 @@ where
                 }
                 self.head_iter = None;
                 return foremost_error.map(Err);
-            } else if self.is_at_start {
-                self.is_at_start = false;
-                match self.parsers.head.parse_iter(self.source, self.start) {
-                    Err(err) => {
-                        ParseError::keep_best(&mut foremost_error, err);
-                        return foremost_error.map(Err);
-                    }
-                    Ok(iter) => self.head_iter = Some(iter),
-                }
             } else {
                 return None;
             }
