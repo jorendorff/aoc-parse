@@ -7,47 +7,41 @@ pub struct ExactParser {
     s: &'static str,
 }
 
-pub struct ExactParseIter<'parse> {
-    expected: &'parse str,
-    input: &'parse str,
-    start: usize,
+pub struct ExactParseIter {
+    end: usize,
     done: bool,
 }
 
 impl Parser for ExactParser {
     type Output = ();
     type RawOutput = ();
-    type Iter<'parse> = ExactParseIter<'parse>;
+    type Iter<'parse> = ExactParseIter;
 
     fn parse_iter<'parse>(
         &'parse self,
         source: &'parse str,
         start: usize,
-    ) -> Result<ExactParseIter<'parse>> {
-        Ok(ExactParseIter {
-            expected: &self.s,
-            input: source,
-            start,
-            done: false,
-        })
+    ) -> Result<ExactParseIter> {
+        if source[start..].starts_with(self.s) {
+            Ok(ExactParseIter {
+                end: start + self.s.len(),
+                done: false,
+            })
+        } else {
+            Err(ParseError::new_expected(source, start, self.s))
+        }
     }
 }
 
-impl<'parse> ParseIter for ExactParseIter<'parse> {
+impl ParseIter for ExactParseIter {
     type RawOutput = ();
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
         if self.done {
             None
-        } else if self.input[self.start..].starts_with(self.expected) {
-            self.done = true;
-            Some(Ok(self.start + self.expected.len()))
         } else {
-            Some(Err(ParseError::new_expected(
-                self.input,
-                self.start,
-                self.expected,
-            )))
+            self.done = true;
+            Some(Ok(self.end))
         }
     }
 
