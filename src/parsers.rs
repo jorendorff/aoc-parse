@@ -78,7 +78,7 @@ mod tests {
     use super::*;
 
     #[track_caller]
-    fn assert_parse<P>(parser: &P, s: &str)
+    pub(crate) fn assert_parse<P>(parser: &P, s: &str)
     where
         P: Parser,
     {
@@ -88,7 +88,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
+    pub(crate) fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
     where
         P: Parser,
         P::Output: PartialEq<E> + Debug,
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn assert_no_parse<P>(parser: &P, s: &str)
+    pub(crate) fn assert_no_parse<P>(parser: &P, s: &str)
     where
         P: Parser,
         P::Output: Debug,
@@ -171,34 +171,6 @@ mod tests {
             &sequence(exact("forward "), u64).map(|a| a),
             "forward 1234",
             1234u64,
-        );
-    }
-
-    #[test]
-    fn test_parse_hex() {
-        assert_no_parse(&i32_hex, "+");
-        assert_no_parse(&i32_hex, "-");
-        assert_no_parse(&i32_hex, "+ 4");
-        assert_no_parse(&i32_hex, "+ 4");
-        assert_parse_eq(&i32_hex, "7BCDEF01", 0x7bcdef01);
-        assert_parse_eq(&i32_hex, "7fffffff", i32::MAX);
-        assert_no_parse(&i32_hex, "80000000");
-        assert_parse_eq(&i32_hex, "-80000000", i32::MIN);
-        assert_no_parse(&i32_hex, "-80000001");
-
-        let p = sequence(i32_hex, i32_hex);
-        assert_no_parse(&p, "12");
-        assert_no_parse(&p, "01230123ABCDABCD");
-        assert_parse_eq(&p, "-1+1", (-1, 1));
-
-        assert_no_parse(&u32_hex, "-1");
-        assert_no_parse(&u32_hex, "+d3d32e2e");
-        assert_parse_eq(&u32_hex, "ffffffff", u32::MAX);
-        assert_parse_eq(&u32_hex, "ffffffff", u32::MAX);
-        assert_parse_eq(
-            &u32_hex,
-            "0000000000000000000000000000000000000000000000000000000000000000ffffffff",
-            u32::MAX,
         );
     }
 }
