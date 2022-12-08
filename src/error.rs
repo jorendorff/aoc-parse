@@ -19,14 +19,18 @@ impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let reason = &self.reason;
         let source = &self.source;
-        let p = self.location.min(source.len());
-        let line_start = match source[..p].rfind('\n') {
-            Some(i) => i + 1,
-            None => 0,
-        };
-        let line_num = source[..line_start].chars().filter(|c| *c == '\n').count() + 1;
-        let column_num = p - line_start + 1;
-        write!(f, "{reason} at line {line_num} column {column_num}")
+        if self.location == source.len() {
+            write!(f, "{reason} at end of input")
+        } else {
+            let p = self.location.min(source.len());
+            let line_start = match source[..p].rfind('\n') {
+                Some(i) => i + 1,
+                None => 0,
+            };
+            let line_num = source[..line_start].chars().filter(|c| *c == '\n').count() + 1;
+            let column_num = p - line_start + 1;
+            write!(f, "{reason} at line {line_num} column {column_num}")
+        }
     }
 }
 
