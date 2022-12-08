@@ -28,7 +28,7 @@ impl std::fmt::Display for ParseError {
                 None => 0,
             };
             let line_num = source[..line_start].chars().filter(|c| *c == '\n').count() + 1;
-            let column_num = p - line_start + 1;
+            let column_num = source[line_start..p].chars().count() + 1;
             write!(f, "{reason} at line {line_num} column {column_num}")
         }
     }
