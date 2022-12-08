@@ -57,6 +57,22 @@ The argument you need to pass to the `parser!` macro is a *pattern*;
 all aoc-parse does is **match** strings against your chosen pattern
 and **convert** them into Rust values.
 
+Here are some examples of patterns:
+
+```rust
+lines(i32)      // matches a list of integers, one per line
+                // converts them to a Vec<i32>
+
+line(lower+)    // matches a single line of one or more lowercase letters
+                // converts them to a Vec<char>
+
+lines({         // matches lines made up of the characters < = >
+    "<" => -1,  // converts them to a Vec<Vec<i32>> filled with -1, 0, and 1
+    "=" => 0,
+    ">" => 1
+}+)
+```
+
 Here are the pieces that you can use in a pattern:
 
 *   `i8`, `i16`, `i32`, `i64`, `i128`, `isize` - These match an integer,
@@ -177,15 +193,61 @@ Custom conversion:
     );
     ```
 
-Patterns with two or more alternatives:
+Alternatives:
 
 *   <code>{<var>pattern1</var>, <var>pattern2</var>, ...}</code> -
-    First try matching *pattern1*; if it matches, stop. If not, try
-    *pattern2*, and so on. All the patterns must produce the same type of
-    Rust value.
+    Matches any one of the *patterns*. First try matching *pattern1*; if it
+    matches, stop. If not, try *pattern2*, and so on. All the patterns must
+    produce the same type of Rust value.
+
+    This is sort of like a Rust `match` expression.
 
     For example, `parser!({"<" => -1, ">" => 1})` either matches `<`,
     returning the value `-1`, or matches `>`, returing `1`.
+
+    Alternatives are handy when you want to convert the input into an enum.
+    For example, my puzzle input for December 23, 2015 was a list of instructions
+    that looked (in part) like this:
+
+    ```text
+    jie a, +4
+    tpl a
+    inc a
+    jmp +2
+    hlf a
+    jmp -7
+    ```
+
+    This can be easily parsed into a vector of beautiful enums, like so:
+
+    ```
+    enum Reg {
+        A,
+        B,
+    }
+
+    enum Insn {
+        Hlf(Reg),
+        Tpl(Reg),
+        Inc(Reg),
+        Jmp(isize),
+        Jie(Reg, isize),
+        Jio(Reg, isize),
+    }
+
+    use Reg::*;
+    use Insn::*;
+
+    let reg = parser!({"a" => A, "b" => B});
+    let p = parser!(lines({
+        "hlf " (r: reg) => Hlf(r),
+        "tpl " (r: reg) => Tpl(r),
+        "inc " (r: reg) => Inc(r),
+        "jmp " (offset: isize) => Jmp(offset),
+        "jie " (r: reg) ", " (offset: isize) => Jie(r, offset),
+        "jio " (r: reg) ", " (offset: isize) => Jio(r, offset),
+    }));
+    ```
 
 Lines and sections:
 
@@ -207,7 +269,6 @@ Lines and sections:
     Equivalent to <code>line(<var>pattern</var>)*</code>.
 
     ```
-    # use aoc_parse::{parser, prelude::*};
     let p = parser!(lines(repeat_sep(digit, " ")));
     assert_eq!(
         p.parse("1 2 3\n4 5 6\n").unwrap(),
