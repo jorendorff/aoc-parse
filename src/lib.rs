@@ -275,12 +275,13 @@ mod error;
 #[doc(hidden)]
 pub mod macros;
 mod parsers;
+mod traits;
 mod types;
+mod util;
 
 pub use error::ParseError;
 use error::Result;
-pub use parsers::{ParseIter, Parser};
-use types::ParserOutput;
+pub use traits::{ParseIter, Parser};
 
 /// A giant sack of toys and goodies to import along with `Parser`.
 ///
@@ -292,7 +293,9 @@ use types::ParserOutput;
 /// type: `i32`, `usize`, `bool`, and so on. There's no conflict because Rust
 /// types and constants live in separate namespaces.
 pub mod prelude {
-    pub use crate::parsers::{aoc_parse, Parser};
+    pub use crate::traits::Parser;
+
+    pub use crate::util::aoc_parse;
 
     pub use crate::parsers::{
         alnum, alpha, any_char, bool, digit, digit_bin, digit_hex, i128, i128_bin, i128_hex, i16,
