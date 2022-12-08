@@ -26,6 +26,8 @@ regexes! {
     bool_regex = r"true|false";
     uint_bin_regex = r"\A[01]+";
     int_bin_regex = r"\A[+-]?[01]+";
+    uint_hex_regex = r"\A[0-9A-Fa-f]+";
+    int_hex_regex = r"\A[+-]?[0-9A-Fa-f]+";
 }
 
 macro_rules! from_str_parse_impl {
@@ -48,13 +50,13 @@ from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
 from_str_parse_impl!(bool, bool_regex);
 
 macro_rules! from_str_radix_parsers {
-    ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* : $re_name:ident ) => {
+    ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* ; $bin_re:ident, $hex_re:ident ) => {
         $(
             /// Parse an integer written in base 2, using the `from_str_radix`
             /// static method from the Rust standard library.
             #[allow(non_upper_case_globals)]
             pub const $bin: RegexParser<$ty, ParseIntError> = RegexParser {
-                regex: $re_name,
+                regex: $bin_re,
                 parse_fn: |s| $ty::from_str_radix(s, 2),
             };
 
@@ -62,7 +64,7 @@ macro_rules! from_str_radix_parsers {
             /// static method from the Rust standard library.
             #[allow(non_upper_case_globals)]
             pub const $hex: RegexParser<$ty, ParseIntError> = RegexParser {
-                regex: $re_name,
+                regex: $hex_re,
                 parse_fn: |s| $ty::from_str_radix(s, 16),
             };
 
@@ -76,7 +78,9 @@ from_str_radix_parsers!(
     (u32, u32_bin, u32_hex),
     (u64, u64_bin, u64_hex),
     (u128, u128_bin, u128_hex),
-    (usize, usize_bin, usize_hex): uint_bin_regex
+    (usize, usize_bin, usize_hex);
+    uint_bin_regex,
+    uint_hex_regex
 );
 
 from_str_radix_parsers!(
@@ -85,5 +89,7 @@ from_str_radix_parsers!(
     (i32, i32_bin, i32_hex),
     (i64, i64_bin, i64_hex),
     (i128, i128_bin, i128_hex),
-    (isize, isize_bin, isize_hex): int_bin_regex
+    (isize, isize_bin, isize_hex);
+    int_bin_regex,
+    int_hex_regex
 );
