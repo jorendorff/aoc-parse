@@ -28,11 +28,14 @@ where
         P: 'parse,
         F: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        MapRawParseIter {
-            iter: self.parser.parse_iter(source, start),
-            mapper: &self.mapper,
-        }
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        let iter = self.parser.parse_iter(source, start)?;
+        let mapper = &self.mapper;
+        Ok(MapRawParseIter { iter, mapper })
     }
 }
 
@@ -84,11 +87,14 @@ where
         P: 'parse,
         F: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        MapParseIter {
-            iter: self.parser.parse_iter(source, start),
-            mapper: &self.mapper,
-        }
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        let iter = self.parser.parse_iter(source, start)?;
+        let mapper = &self.mapper;
+        Ok(MapParseIter { iter, mapper })
     }
 }
 

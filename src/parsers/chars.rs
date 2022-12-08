@@ -23,12 +23,16 @@ impl Parser for CharParser {
     type RawOutput = (char,);
     type Iter<'parse> = CharParseIter<'parse>;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        CharParseIter::Before {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        Ok(CharParseIter::Before {
             parser: self,
             source,
             start,
-        }
+        })
     }
 }
 

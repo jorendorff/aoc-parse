@@ -23,13 +23,13 @@ impl Parser for ExactParser {
         &'parse self,
         source: &'parse str,
         start: usize,
-    ) -> ExactParseIter<'parse> {
-        ExactParseIter {
+    ) -> Result<ExactParseIter<'parse>> {
+        Ok(ExactParseIter {
             expected: &self.s,
             input: source,
             start,
             done: false,
-        }
+        })
     }
 }
 

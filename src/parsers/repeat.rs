@@ -40,14 +40,18 @@ where
         Pattern: 'parse,
         Sep: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        RepeatParseIter {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        Ok(RepeatParseIter {
             source,
             params: self,
-            pattern_iters: vec![self.pattern.parse_iter(source, start)],
+            pattern_iters: vec![],
             sep_iters: vec![],
             starts: vec![start],
-        }
+        })
     }
 }
 
@@ -74,63 +78,103 @@ where
     fn next_parse(&mut self) -> Option<Result<usize>> {
         // TODO: When considering creating a new iterator, if we have already
         // matched `max` times, don't bother; no matches can come of it.
+        enum Mode {
+            Forward,
+            NewIter,
+            Exhausted,
+            Backtrack,
+        }
+
+        let mut mode = if self.pattern_iters.is_empty() && self.starts.len() == 1 {
+            Mode::NewIter
+        } else {
+            Mode::Forward
+        };
+
         let mut foremost_error: Option<ParseError> = None;
-        let mut got_iter = true;
         loop {
-            assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
-            assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
-            if got_iter {
-                let next_parse = if self.starts.is_empty() {
-                    // No more iterators. We exhausted all possibilities.
-                    return foremost_error.map(Err);
-                } else if self.starts.len() % 2 == 1 {
-                    self.pattern_iters.last_mut().unwrap().next_parse()
-                } else {
-                    self.sep_iters.last_mut().unwrap().next_parse()
-                };
+            match mode {
+                Mode::Forward => {
+                    assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
+                    assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
 
-                // Get the next match.
-                match next_parse {
-                    None => {
-                        got_iter = false;
-                    }
-                    Some(Err(err)) => {
-                        got_iter = false;
-                        if Some(err.location) > foremost_error.as_ref().map(|err| err.location) {
-                            foremost_error = Some(err);
+                    let next_parse = if self.starts.is_empty() {
+                        // No more iterators. We exhausted all possibilities.
+                        return foremost_error.map(Err);
+                    } else if self.starts.len() % 2 == 1 {
+                        self.pattern_iters.last_mut().unwrap().next_parse()
+                    } else {
+                        self.sep_iters.last_mut().unwrap().next_parse()
+                    };
+
+                    // Get the next match.
+                    match next_parse {
+                        None => {
+                            mode = Mode::Exhausted;
                         }
-                    }
-                    Some(Ok(point)) => {
-                        // Got a match! But don't return it to the user yet.
-                        // Repeats are "greedy"; we press on to see if we can
-                        // match again! If we just matched `pattern`, try
-                        // `sep`; if we just matched `sep`, try `pattern`.
-                        self.starts.push(point);
-                        if self.starts.len() % 2 == 1 {
-                            self.pattern_iters
-                                .push(self.params.pattern.parse_iter(self.source, point));
-                        } else {
-                            self.sep_iters
-                                .push(self.params.sep.parse_iter(self.source, point));
+                        Some(Err(err)) => {
+                            ParseError::keep_best(&mut foremost_error, err);
+                            mode = Mode::Exhausted;
+                        }
+                        Some(Ok(point)) => {
+                            // Got a match! But don't return it to the user yet.
+                            // Repeats are "greedy"; we press on to see if we can
+                            // match again! If we just matched `pattern`, try
+                            // `sep`; if we just matched `sep`, try `pattern`.
+                            self.starts.push(point);
+                            mode = Mode::NewIter;
                         }
                     }
                 }
-            } else {
-                // The current top-of-stack iterator is exhausted and needs to
-                // be discarded.
-                if self.starts.len() % 2 == 1 {
-                    self.pattern_iters.pop();
-                } else {
-                    self.sep_iters.pop();
+                Mode::NewIter => {
+                    let point = self.starts.last().copied().unwrap();
+                    if self.pattern_iters.is_empty() || self.starts.len() % 2 == 1 {
+                        match self.params.pattern.parse_iter(self.source, point) {
+                            Err(err) => {
+                                ParseError::keep_best(&mut foremost_error, err);
+                                mode = Mode::Backtrack;
+                            }
+                            Ok(iter) => {
+                                self.pattern_iters.push(iter);
+                                mode = Mode::Forward;
+                            }
+                        }
+                    } else {
+                        match self.params.sep.parse_iter(self.source, point) {
+                            Err(err) => {
+                                ParseError::keep_best(&mut foremost_error, err);
+                                mode = Mode::Backtrack;
+                            }
+                            Ok(iter) => {
+                                self.sep_iters.push(iter);
+                                mode = Mode::Forward;
+                            }
+                        }
+                    }
                 }
-                let end = self.starts.pop().unwrap();
-                got_iter = true;
+                Mode::Exhausted => {
+                    // The current top-of-stack iterator is exhausted and needs to
+                    // be discarded.
+                    assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
+                    assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
 
-                // Repeats are "greedy", so we need to yield the longest match
-                // first. This means returning only "on the way out" (a
-                // postorder walk of the tree of possible parses).
-                if self.params.check_repeat_count(self.starts.len()) {
-                    return Some(Ok(end));
+                    if self.starts.len() % 2 == 1 {
+                        self.pattern_iters.pop();
+                    } else {
+                        self.sep_iters.pop();
+                    }
+                    mode = Mode::Backtrack;
+                }
+
+                Mode::Backtrack => {
+                    // Repeats are "greedy", so we need to yield the longest match
+                    // first. This means returning only "on the way out" (a
+                    // postorder walk of the tree of possible parses).
+                    let end = self.starts.pop().unwrap();
+                    if self.params.check_repeat_count(self.starts.len()) {
+                        return Some(Ok(end));
+                    }
+                    mode = Mode::Forward;
                 }
             }
         }

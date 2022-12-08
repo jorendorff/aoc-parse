@@ -107,12 +107,16 @@ where
         R: 'parse,
         P: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        RegionParseIter::Init {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        Ok(RegionParseIter::Init {
             parser: self,
             source,
             start,
-        }
+        })
     }
 }
 
@@ -157,7 +161,14 @@ where
                         return Some(Err(ParseError::new_expected(source, source.len(), "\n")));
                     }
                 };
-                let mut iter = parser.parser.parse_iter(&source[start..inner_end], 0);
+                let mut iter = match parser.parser.parse_iter(&source[start..inner_end], 0) {
+                    Err(mut err) => {
+                        *self = RegionParseIter::Done;
+                        err.adjust_location(start);
+                        return Some(Err(err));
+                    }
+                    Ok(iter) => iter,
+                };
                 let mut farthest = 0;
                 loop {
                     match iter.next_parse() {

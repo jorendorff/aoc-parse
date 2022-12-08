@@ -48,12 +48,16 @@ where
     where
         E: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        RegexParseIter::Init {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        Ok(RegexParseIter::Init {
             source,
             start,
             parser: self,
-        }
+        })
     }
 }
 

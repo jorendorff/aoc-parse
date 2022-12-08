@@ -39,15 +39,19 @@ where
         Head: 'parse,
         Tail: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        SequenceParseIter {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        Ok(SequenceParseIter {
             parsers: self,
             is_at_start: true,
             source,
             start,
             head_iter: None,
             tail_iter: None,
-        }
+        })
     }
 }
 
@@ -66,11 +70,8 @@ where
                 match tail_iter.next_parse() {
                     None => {}
                     Some(Err(err)) => {
-                        if foremost_error.as_ref().map(|err| err.location) < Some(err.location) {
-                            foremost_error = Some(err);
-                        }
+                        ParseError::keep_best(&mut foremost_error, err);
                     }
-
                     Some(Ok(tail_end)) => return Some(Ok(tail_end)),
                 }
                 self.tail_iter = None;
@@ -78,12 +79,17 @@ where
                 match head_iter.next_parse() {
                     None => {}
                     Some(Err(err)) => {
-                        if foremost_error.as_ref().map(|err| err.location) < Some(err.location) {
-                            foremost_error = Some(err);
-                        }
+                        ParseError::keep_best(&mut foremost_error, err);
                     }
                     Some(Ok(head_end)) => {
-                        self.tail_iter = Some(self.parsers.tail.parse_iter(self.source, head_end));
+                        match self.parsers.tail.parse_iter(self.source, head_end) {
+                            Ok(iter) => {
+                                self.tail_iter = Some(iter);
+                            }
+                            Err(err) => {
+                                ParseError::keep_best(&mut foremost_error, err);
+                            }
+                        }
                         continue;
                     }
                 }
@@ -91,7 +97,13 @@ where
                 return foremost_error.map(Err);
             } else if self.is_at_start {
                 self.is_at_start = false;
-                self.head_iter = Some(self.parsers.head.parse_iter(self.source, self.start));
+                match self.parsers.head.parse_iter(self.source, self.start) {
+                    Err(err) => {
+                        ParseError::keep_best(&mut foremost_error, err);
+                        return foremost_error.map(Err);
+                    }
+                    Ok(iter) => self.head_iter = Some(iter),
+                }
             } else {
                 return None;
             }

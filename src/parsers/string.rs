@@ -27,13 +27,18 @@ where
     where
         P: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        StringParseIter {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        let iter = self.parser.parse_iter(source, start)?;
+        Ok(StringParseIter {
             source,
             start,
             end: start,
-            iter: self.parser.parse_iter(source, start),
-        }
+            iter,
+        })
     }
 }
 

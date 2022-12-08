@@ -10,11 +10,11 @@ impl Parser for EmptyParser {
     type RawOutput = ();
     type Iter<'parse> = EmptyParseIter;
 
-    fn parse_iter(&self, _source: &str, start: usize) -> EmptyParseIter {
-        EmptyParseIter {
+    fn parse_iter(&self, _source: &str, start: usize) -> Result<EmptyParseIter> {
+        Ok(EmptyParseIter {
             used: false,
             location: start,
-        }
+        })
     }
 }
 

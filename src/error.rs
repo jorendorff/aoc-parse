@@ -128,6 +128,34 @@ impl ParseError {
         )
     }
 
+    /// Track the foremost error.
+    ///
+    /// That is, if `candidate` is better than the current `best_error`
+    /// (including if `best_error` is `None`), store `candidate` in
+    /// `best_error`. Otherwise discard it.
+    ///
+    /// Nontrivial patterns try several different things. If anything succeeds,
+    /// we get a match. We only fail if every branch leads to failure. This
+    /// means that by the time matching fails, we have an abundance of
+    /// different error messages. Generally the error we want is the one where
+    /// we progressed as far as possible through the input string before
+    /// failing.
+    pub(crate) fn keep_best(best_error: &mut Option<ParseError>, candidate: ParseError) {
+        // TODO: if the two errors have the same location, combine them instead
+        // of discarding `candidate`.
+        if Some(candidate.location) > best_error.as_ref().map(|err| err.location) {
+            *best_error = Some(candidate);
+        }
+    }
+
+    pub(crate) fn max_location(self, other: Self) -> Self {
+        if self.location >= other.location {
+            self
+        } else {
+            other
+        }
+    }
+
     /// This is used when a subparser is used on a slice of the original
     /// string. If the subparse fails, the error location is a position within
     /// the slice. This can be used, passing the start offset of the slice, to

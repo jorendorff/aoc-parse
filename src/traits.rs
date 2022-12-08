@@ -45,11 +45,15 @@ pub trait Parser {
 
     /// Produce a [parse iterator][ParseIter]. This is an internal implementation detail of
     /// the parser and shouldn't normally be called directly from application code.
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse>;
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>>;
 
     /// Like `parse` but produce the output in its [raw form][Self::RawOutput].
     fn parse_raw(&self, s: &str) -> Result<Self::RawOutput> {
-        let mut it = self.parse_iter(s, 0);
+        let mut it = self.parse_iter(s, 0)?;
         let mut best_end: Option<usize> = None;
         while let Some(parse) = it.next_parse() {
             let end = parse?;
@@ -152,7 +156,11 @@ where
         P: 'parse,
         'a: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
         <P as Parser>::parse_iter(self, source, start)
     }
 }

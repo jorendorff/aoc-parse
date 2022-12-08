@@ -39,13 +39,26 @@ where
         A: 'parse,
         B: 'parse;
 
-    fn parse_iter<'parse>(&'parse self, source: &'parse str, start: usize) -> Self::Iter<'parse> {
-        EitherParseIter {
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<Self::Iter<'parse>> {
+        let iter = match self.left.parse_iter(source, start) {
+            Ok(iter) => Either::Left(iter),
+            Err(left_err) => match self.right.parse_iter(source, start) {
+                Ok(iter) => Either::Right(iter),
+                Err(right_err) => {
+                    return Err(left_err.max_location(right_err));
+                }
+            },
+        };
+        Ok(EitherParseIter {
             source,
             start,
             parsers: self,
-            iter: Either::Left(self.left.parse_iter(source, start)),
-        }
+            iter,
+        })
     }
 }
 
@@ -71,8 +84,16 @@ where
                         }
                         Some(Ok(end)) => return Some(Ok(end)),
                     }
-                    self.iter =
-                        Either::Right(self.parsers.right.parse_iter(self.source, self.start));
+                    match self.parsers.right.parse_iter(self.source, self.start) {
+                        Ok(iter) => self.iter = Either::Right(iter),
+                        Err(err) => {
+                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
+                            {
+                                foremost_error = Some(err);
+                            }
+                            return foremost_error.map(Err);
+                        }
+                    }
                 }
                 Either::Right(iter) => {
                     match iter.next_parse() {
