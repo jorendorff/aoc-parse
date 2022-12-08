@@ -78,16 +78,6 @@ mod tests {
     use super::*;
 
     #[track_caller]
-    pub(crate) fn assert_parse<P>(parser: &P, s: &str)
-    where
-        P: Parser,
-    {
-        if let Err(err) = parser.parse(s) {
-            panic!("parse failed: {}", err);
-        }
-    }
-
-    #[track_caller]
     pub(crate) fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
     where
         P: Parser,
@@ -118,37 +108,37 @@ mod tests {
         assert_no_parse(&p, "x");
 
         let p = exact("ok");
-        assert_parse(&p, "ok");
+        assert_parse_eq(&p, "ok", ());
         assert_no_parse(&p, "");
         assert_no_parse(&p, "o");
         assert_no_parse(&p, "nok");
 
         let p = sequence(exact("ok"), exact("go"));
-        assert_parse(&p, "okgo");
+        assert_parse_eq(&p, "okgo", ());
         assert_no_parse(&p, "ok");
         assert_no_parse(&p, "go");
         assert_no_parse(&p, "");
 
         let p = either(empty(), exact("ok"));
-        assert_parse(&p, "");
-        assert_parse(&p, "ok");
+        assert_parse_eq(&p, "", Either::Left(()));
+        assert_parse_eq(&p, "ok", Either::Right(()));
         assert_no_parse(&p, "okc");
         assert_no_parse(&p, "okok");
 
         let p = star(exact("a"));
-        assert_parse(&p, "");
-        assert_parse(&p, "a");
-        assert_parse(&p, "aa");
-        assert_parse(&p, "aaa");
+        assert_parse_eq(&p, "", vec![]);
+        assert_parse_eq(&p, "a", vec![()]);
+        assert_parse_eq(&p, "aa", vec![(), ()]);
+        assert_parse_eq(&p, "aaa", vec![(), (), ()]);
         assert_no_parse(&p, "b");
         assert_no_parse(&p, "ab");
         assert_no_parse(&p, "ba");
 
         let p = repeat_sep(exact("cow"), exact(","));
-        assert_parse(&p, "");
-        assert_parse(&p, "cow");
-        assert_parse(&p, "cow,cow");
-        assert_parse(&p, "cow,cow,cow");
+        assert_parse_eq(&p, "", vec![]);
+        assert_parse_eq(&p, "cow", vec![()]);
+        assert_parse_eq(&p, "cow,cow", vec![(), ()]);
+        assert_parse_eq(&p, "cow,cow,cow", vec![(), (), ()]);
         assert_no_parse(&p, "cowcow");
         assert_no_parse(&p, "cow,");
         assert_no_parse(&p, "cow,,cow");
@@ -157,8 +147,8 @@ mod tests {
 
         let p = plus(exact("a"));
         assert_no_parse(&p, "");
-        assert_parse(&p, "a");
-        assert_parse(&p, "aa");
+        assert_parse_eq(&p, "a", vec![()]);
+        assert_parse_eq(&p, "aa", vec![(), ()]);
 
         let p = repeat_sep(usize, exact(","));
         assert_parse_eq(&p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);

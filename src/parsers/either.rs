@@ -4,7 +4,7 @@ use crate::{
     error::Result, parsers::MapParser, types::ParserOutput, ParseError, ParseIter, Parser,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Either<A, B> {
     Left(A),
     Right(B),
