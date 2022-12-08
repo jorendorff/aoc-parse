@@ -73,52 +73,41 @@ enum ParseErrorReason {
 }
 
 impl ParseError {
-    pub(crate) fn new_extra(source: &str, location: usize) -> Self {
+    fn new(source: &str, location: usize, reason: ParseErrorReason) -> Self {
+        assert!(source.is_char_boundary(location));
         ParseError {
             source: source.to_string(),
             location,
-            reason: ParseErrorReason::Extra,
+            reason,
         }
+    }
+
+    pub(crate) fn new_extra(source: &str, location: usize) -> Self {
+        Self::new(source, location, ParseErrorReason::Extra)
     }
 
     pub(crate) fn new_bad_line_start(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::NotAtLineStart,
-        }
+        Self::new(source, location, ParseErrorReason::NotAtLineStart)
     }
 
     pub(crate) fn new_bad_section_start(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::NotAtSectionStart,
-        }
+        Self::new(source, location, ParseErrorReason::NotAtSectionStart)
     }
 
     pub(crate) fn new_line_extra(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::LineExtra,
-        }
+        Self::new(source, location, ParseErrorReason::LineExtra)
     }
 
     pub(crate) fn new_section_extra(source: &str, location: usize) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location,
-            reason: ParseErrorReason::SectionExtra,
-        }
+        Self::new(source, location, ParseErrorReason::SectionExtra)
     }
 
     pub(crate) fn new_expected(source: &str, location: usize, expected: &str) -> Self {
-        ParseError {
-            source: source.to_string(),
+        Self::new(
+            source,
             location,
-            reason: ParseErrorReason::Expected(expected.to_string()),
-        }
+            ParseErrorReason::Expected(expected.to_string()),
+        )
     }
 
     pub(crate) fn new_from_str_failed(
@@ -128,15 +117,15 @@ impl ParseError {
         type_name: &'static str,
         message: String,
     ) -> Self {
-        ParseError {
-            source: source.to_string(),
-            location: start,
-            reason: ParseErrorReason::FromStrFailed {
+        Self::new(
+            source,
+            start,
+            ParseErrorReason::FromStrFailed {
                 input: source[start..end].to_string(),
                 type_name,
                 message,
             },
-        }
+        )
     }
 
     /// This is used when a subparser is used on a slice of the original
