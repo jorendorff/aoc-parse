@@ -89,6 +89,29 @@ impl Region for Section {
     }
 }
 
+/// Match but don't convert; just return the ParseIter on success. Expects all
+/// of `source` to be matched, otherwise it's an error.
+fn match_fully<'parse, R, P>(parser: &'parse P, source: &'parse str) -> Result<P::Iter<'parse>>
+where
+    R: Region,
+    P: Parser,
+{
+    let mut iter = parser.parse_iter(source, 0)?;
+    let mut farthest = 0;
+    loop {
+        match iter.next_parse() {
+            None => {
+                return Err(R::extra_err(source, farthest));
+            }
+            Some(Err(err)) => return Err(err),
+            Some(Ok(len)) if len == source.len() => {
+                return Ok(iter);
+            }
+            Some(Ok(len)) => farthest = farthest.max(len),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct RegionParser<R: Region, P> {
     parser: P,
@@ -102,7 +125,7 @@ where
 {
     type RawOutput = (P::Output,);
     type Output = P::Output;
-    type Iter<'parse> = RegionParseIter<'parse, R, P>
+    type Iter<'parse> = RegionParseIter<'parse, P>
     where
         R: 'parse,
         P: 'parse;
@@ -112,99 +135,54 @@ where
         source: &'parse str,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        Ok(RegionParseIter::Init {
-            parser: self,
-            source,
-            start,
+        if !R::is_at_start(source, start) {
+            return Err(R::not_at_start_err(source, start));
+        }
+        let (inner_end, outer_end) = match R::find_end(source, start) {
+            Some(pair) => pair,
+            None => {
+                return Err(ParseError::new_expected(source, source.len(), "\n"));
+            }
+        };
+
+        let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
+            .map_err(|err| err.adjust_location(start))?;
+
+        Ok(RegionParseIter {
+            iter,
+            outer_end,
+            done: false,
         })
     }
 }
 
-pub enum RegionParseIter<'parse, R, P>
+pub struct RegionParseIter<'parse, P>
 where
-    R: Region + 'parse,
     P: Parser + 'parse,
 {
-    Init {
-        parser: &'parse RegionParser<R, P>,
-        source: &'parse str,
-        start: usize,
-    },
-    Matched {
-        iter: P::Iter<'parse>,
-    },
-    Done,
+    iter: P::Iter<'parse>,
+    outer_end: usize,
+    done: bool,
 }
 
-impl<'parse, R, P> ParseIter for RegionParseIter<'parse, R, P>
+impl<'parse, P> ParseIter for RegionParseIter<'parse, P>
 where
-    R: Region,
     P: Parser,
 {
     type RawOutput = (P::Output,);
 
     fn next_parse(&mut self) -> Option<Result<usize>> {
-        match *self {
-            RegionParseIter::Init {
-                parser,
-                source,
-                start,
-            } => {
-                if !R::is_at_start(source, start) {
-                    *self = RegionParseIter::Done;
-                    return Some(Err(R::not_at_start_err(source, start)));
-                }
-                let (inner_end, outer_end) = match R::find_end(source, start) {
-                    Some(pair) => pair,
-                    None => {
-                        *self = RegionParseIter::Done;
-                        return Some(Err(ParseError::new_expected(source, source.len(), "\n")));
-                    }
-                };
-                let mut iter = match parser.parser.parse_iter(&source[start..inner_end], 0) {
-                    Err(mut err) => {
-                        *self = RegionParseIter::Done;
-                        err.adjust_location(start);
-                        return Some(Err(err));
-                    }
-                    Ok(iter) => iter,
-                };
-                let mut farthest = 0;
-                loop {
-                    match iter.next_parse() {
-                        None => {
-                            *self = RegionParseIter::Done;
-                            return Some(Err(R::extra_err(source, start + farthest)));
-                        }
-                        Some(Err(mut err)) => {
-                            *self = RegionParseIter::Done;
-                            err.adjust_location(start);
-                            return Some(Err(err));
-                        }
-                        Some(Ok(len)) if start + len == inner_end => {
-                            *self = RegionParseIter::Matched { iter };
-                            return Some(Ok(outer_end));
-                        }
-                        Some(Ok(len)) => farthest = farthest.max(len),
-                    }
-                }
-            }
-            _ => {
-                *self = RegionParseIter::Done;
-                None
-            }
+        if self.done {
+            None
+        } else {
+            self.done = true;
+            Some(Ok(self.outer_end))
         }
     }
 
     fn take_data(&mut self) -> Self::RawOutput {
-        match self {
-            RegionParseIter::Matched { iter } => {
-                let v = iter.take_data().into_user_type();
-                *self = RegionParseIter::Done;
-                (v,)
-            }
-            _ => panic!("internal error: take_data called in invalid state"),
-        }
+        let v = self.iter.take_data().into_user_type();
+        (v,)
     }
 }
 

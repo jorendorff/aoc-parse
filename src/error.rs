@@ -160,8 +160,9 @@ impl ParseError {
     /// string. If the subparse fails, the error location is a position within
     /// the slice. This can be used, passing the start offset of the slice, to
     /// convert that to a position within the original string.
-    pub(crate) fn adjust_location(&mut self, offset: usize) {
+    pub(crate) fn adjust_location(mut self, offset: usize) -> Self {
         self.location += offset;
+        self
     }
 }
 
