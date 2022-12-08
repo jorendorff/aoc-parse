@@ -42,6 +42,8 @@ pub fn opt<T>(
     })
 }
 
+type ParenthesizedParser<P> = MapParser<P, fn(<P as Parser>::Output) -> <P as Parser>::Output>;
+
 // Make sure that RawOutput is exactly `(T,)`.
 //
 // Used by the `parser!()` macro to implement grouping parentheses.
@@ -62,7 +64,7 @@ pub fn opt<T>(
 // It turns out all we need is to ensure the `RawOutput` type of the
 // parenthesized parser is a singleton tuple type.
 #[doc(hidden)]
-pub fn parenthesize<P>(pattern: P) -> MapParser<P, fn(P::Output) -> P::Output>
+pub fn parenthesize<P>(pattern: P) -> ParenthesizedParser<P>
 where
     P: Parser,
 {

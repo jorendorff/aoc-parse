@@ -124,7 +124,7 @@ pub const digit_bin: MapParser<CharParser, fn(char) -> usize> = MapParser {
 
 /// Matches a hexadecimal digit `'0'`-`'9'`, `'a'`-`'f'`, or `'A'`-`'F'`, and
 /// converts it to its integer value `0`-`15`.
-#[allow(non_upper_case_globals)]
+#[allow(non_upper_case_globals, clippy::is_digit_ascii_radix)]
 pub const digit_hex: MapParser<CharParser, fn(char) -> usize> = MapParser {
     parser: CharParser {
         noun: "hexadecimal digit",
