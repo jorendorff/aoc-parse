@@ -172,8 +172,8 @@ where
         false
     }
 
-    fn take_data(&mut self) -> Self::RawOutput {
-        let v = self.iter.take_data().into_user_type();
+    fn into_raw_output(self) -> Self::RawOutput {
+        let v = self.iter.into_raw_output().into_user_type();
         (v,)
     }
 }

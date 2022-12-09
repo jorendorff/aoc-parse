@@ -41,7 +41,7 @@ impl ParseIter for CharParseIter {
     fn backtrack(&mut self) -> bool {
         false
     }
-    fn take_data(&mut self) -> (char,) {
+    fn into_raw_output(self) -> (char,) {
         (self.c,)
     }
 }

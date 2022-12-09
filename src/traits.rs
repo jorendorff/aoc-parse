@@ -58,7 +58,7 @@ pub trait Parser {
         loop {
             let end = it.match_end();
             if end == s.len() {
-                return Ok(it.take_data());
+                return Ok(it.into_raw_output());
             }
             best_end = best_end.max(Some(end));
             if !it.backtrack() {
@@ -132,12 +132,8 @@ pub trait ParseIter {
     /// Once this returns `false`, no more method calls should be made.
     fn backtrack(&mut self) -> bool;
 
-    /// Consume this iterator to extract data. This is called only after a
-    /// successful `next_parse` call that returns `Some(Ok(offset))`.
-    ///
-    /// This would take `self` by value, except that's not compatible with
-    /// trait objects. (`Box<Self>` is, so this could change someday.)
-    fn take_data(&mut self) -> Self::RawOutput;
+    /// Consume this iterator to extract data.
+    fn into_raw_output(self) -> Self::RawOutput;
 }
 
 impl<'a, P> Parser for &'a P

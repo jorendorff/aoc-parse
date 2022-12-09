@@ -248,14 +248,11 @@ where
         self.next(Mode::BacktrackTopIter)
     }
 
-    fn take_data(&mut self) -> (Vec<Pattern::Output>,) {
-        self.starts.truncate(0);
-        self.sep_iters.truncate(0);
+    fn into_raw_output(self) -> (Vec<Pattern::Output>,) {
         let v = self
             .pattern_iters
-            .split_off(0)
-            .iter_mut()
-            .map(|iter| iter.take_data().into_user_type())
+            .into_iter()
+            .map(|iter| iter.into_raw_output().into_user_type())
             .collect();
         (v,)
     }

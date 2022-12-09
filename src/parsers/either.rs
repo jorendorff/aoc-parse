@@ -95,10 +95,10 @@ where
         }
     }
 
-    fn take_data(&mut self) -> (Either<A::Output, B::Output>,) {
-        (match &mut self.iter {
-            Either::Left(iter) => Either::Left(iter.take_data().into_user_type()),
-            Either::Right(iter) => Either::Right(iter.take_data().into_user_type()),
+    fn into_raw_output(self) -> (Either<A::Output, B::Output>,) {
+        (match self.iter {
+            Either::Left(iter) => Either::Left(iter.into_raw_output().into_user_type()),
+            Either::Right(iter) => Either::Right(iter.into_raw_output().into_user_type()),
         },)
     }
 }

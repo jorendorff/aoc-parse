@@ -109,9 +109,9 @@ where
         }
     }
 
-    fn take_data(&mut self) -> Self::RawOutput {
-        let head = self.head_iter.take_data();
-        let tail = self.tail_iter.take_data();
+    fn into_raw_output(self) -> Self::RawOutput {
+        let head = self.head_iter.into_raw_output();
+        let tail = self.tail_iter.into_raw_output();
         head.concat(tail)
     }
 }

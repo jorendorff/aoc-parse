@@ -54,5 +54,5 @@ impl ParseIter for ExactParseIter {
     fn backtrack(&mut self) -> bool {
         false
     }
-    fn take_data(&mut self) {}
+    fn into_raw_output(self) {}
 }

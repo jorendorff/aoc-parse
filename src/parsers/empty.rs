@@ -27,7 +27,7 @@ impl ParseIter for EmptyParseIter {
     fn backtrack(&mut self) -> bool {
         false
     }
-    fn take_data(&mut self) {}
+    fn into_raw_output(self) -> Self::RawOutput {}
 }
 
 // Used by the `parser!()` macro to implement the empty pattern, `()`.

@@ -28,7 +28,7 @@ impl<T, E> Copy for RegexParser<T, E> {}
 
 pub struct RegexParseIter<T> {
     end: usize,
-    value: Option<T>,
+    value: T,
 }
 
 impl<T, E> Parser for RegexParser<T, E>
@@ -56,7 +56,7 @@ where
             Some(m) => match (self.parse_fn)(m.as_str()) {
                 Ok(value) => Ok(RegexParseIter {
                     end: start + m.end(),
-                    value: Some(value),
+                    value,
                 }),
                 Err(err) => Err(ParseError::new_from_str_failed(
                     source,
@@ -78,7 +78,7 @@ impl<T> ParseIter for RegexParseIter<T> {
     fn backtrack(&mut self) -> bool {
         false
     }
-    fn take_data(&mut self) -> Self::RawOutput {
-        (self.value.take().unwrap(),)
+    fn into_raw_output(self) -> (T,) {
+        (self.value,)
     }
 }

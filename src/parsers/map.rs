@@ -54,8 +54,8 @@ where
         self.iter.backtrack()
     }
 
-    fn take_data(&mut self) -> T {
-        (self.mapper)(self.iter.take_data())
+    fn into_raw_output(self) -> T {
+        (self.mapper)(self.iter.into_raw_output())
     }
 }
 
@@ -117,8 +117,8 @@ where
         self.iter.backtrack()
     }
 
-    fn take_data(&mut self) -> (T,) {
-        let value = (self.mapper)(self.iter.take_data().into_user_type());
+    fn into_raw_output(self) -> (T,) {
+        let value = (self.mapper)(self.iter.into_raw_output().into_user_type());
         (value,)
     }
 }
