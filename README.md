@@ -108,8 +108,8 @@ Here are the pieces that you can use in a pattern:
     in a regular expression, except that `any_char` matches newline
     characters).
 
-*   `"x"` - A Rust string, in quotes, is a pattern that matches that exact
-    string only.
+*   `'x'` or `"hello"` - A Rust character or string, in quotes, is a pattern
+    that matches that exact text only.
 
     Exact patterns don't produce a value.
 
