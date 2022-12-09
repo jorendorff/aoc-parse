@@ -89,6 +89,36 @@ fn test_unused_labels() {
 }
 
 #[test]
+fn test_alt_tuple() {
+    // Tuples returned by an alternation don't get concatenated with other
+    // nearby terms.
+    assert_parse_eq(
+        &parser!({u32 "x" u32, (a: u32) "^2" => (a, a)} " -> " alpha),
+        "3x4 -> J",
+        ((3, 4), 'J'),
+    );
+
+    assert_parse_eq(
+        &parser!(alpha " = " {u32 "x" u32, (a: u32) "^2" => (a, a)}),
+        "J = 5^2",
+        ('J', (5, 5)),
+    );
+
+    assert_parse_eq(
+        &parser!({u32 "," u32, "O" => (0, 0)} " + " alpha " + " alpha),
+        "3,7 + j + p",
+        ((3, 7), 'j', 'p'),
+    );
+
+    // Try one where neither alternative is mapped with `=>`.
+    assert_parse_eq(
+        &parser!(u32 ":" {alpha digit, "<" alpha "#" digit ">"}),
+        "57:j1",
+        (57, ('j', 1)),
+    );
+}
+
+#[test]
 fn test_alt_map() {
     let bit = parser!({ "0" => false, "1" => true });
     let p = parser!(bit*);
