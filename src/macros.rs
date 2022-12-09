@@ -1,4 +1,4 @@
-pub use crate::parsers::{alt, empty, exact, lines, opt, parenthesize, plus, sequence, star};
+pub use crate::parsers::{alt, empty, lines, opt, parenthesize, plus, sequence, star};
 
 // Output type of a parser
 // `e => rustexpr` => type of the rustexpr
@@ -243,7 +243,7 @@ macro_rules! parser {
         $x
     };
     (@prim $x:literal) => {
-        $crate::macros::exact($x)
+        $x
     };
     (@prim ( $($nested:tt)* )) => {
         $crate::macros::parenthesize(
