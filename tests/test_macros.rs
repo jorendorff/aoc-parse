@@ -36,6 +36,23 @@ where
     }
 }
 
+#[track_caller]
+fn assert_parse_error<P>(parser: &P, s: &str, expected_message: &str)
+where
+    P: Parser,
+    P::Output: Debug,
+{
+    match parser.parse(s) {
+        Ok(m) => panic!("expected no match, got: {:?}", m),
+        Err(err) => {
+            let actual = err.to_string();
+            if !actual.contains(expected_message) {
+                panic!("expected error message containing {expected_message:?}, got {actual:?}");
+            }
+        }
+    }
+}
+
 #[test]
 fn test_hello_world() {
     let p = parser!("hello " "world");
@@ -145,6 +162,11 @@ mod names_and_scopes {
 
 #[test]
 fn test_chars() {
+    assert_parse_eq(&parser!('A' 'b' 'c'), "Abc", ());
+    assert_no_parse(&parser!('Q'), "q");
+
+    assert_parse_error(&parser!('\n'), "q", r#"expected "\n" at"#);
+
     let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(&p, "");
     assert_no_parse(&p, " hello");

@@ -21,7 +21,27 @@ impl Parser for &'static str {
                 end: start + self.len(),
             })
         } else {
-            Err(ParseError::new_expected(source, start, *self))
+            Err(ParseError::new_expected(source, start, self))
+        }
+    }
+}
+
+impl Parser for char {
+    type Output = ();
+    type RawOutput = ();
+    type Iter<'parse> = ExactParseIter;
+
+    fn parse_iter<'parse>(
+        &'parse self,
+        source: &'parse str,
+        start: usize,
+    ) -> Result<ExactParseIter> {
+        if source[start..].starts_with(*self) {
+            Ok(ExactParseIter {
+                end: start + self.len_utf8(),
+            })
+        } else {
+            Err(ParseError::new_expected(source, start, &self.to_string()))
         }
     }
 }
