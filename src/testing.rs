@@ -30,3 +30,20 @@ where
         panic!("expected no match, got: {:?}", m);
     }
 }
+
+#[track_caller]
+pub(crate) fn assert_parse_error<P>(parser: &P, s: &str, expected_message: &str)
+where
+    P: Parser,
+    P::Output: Debug,
+{
+    match parser.parse(s) {
+        Ok(m) => panic!("expected no match, got: {:?}", m),
+        Err(err) => {
+            let actual = err.to_string();
+            if !actual.contains(expected_message) {
+                panic!("expected error message containing {expected_message:?}, got {actual:?}");
+            }
+        }
+    }
+}

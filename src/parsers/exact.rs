@@ -70,4 +70,11 @@ mod tests {
         let p: &str = &x;
         assert_parse_eq(&p, "hello world!", ());
     }
+
+    #[test]
+    fn test_exact_char_errors() {
+        let p = '\n';
+        assert_parse_error(&p, "q", r#"expected "\n" at"#);
+        assert_parse_error(&p, "", r#"expected "\n" at end"#);
+    }
 }
