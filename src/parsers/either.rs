@@ -2,7 +2,7 @@
 
 use crate::{error::Result, parsers::MapParser, types::ParserOutput, ParseIter, Parser};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Either<A, B> {
     Left(A),
     Right(B),
@@ -83,11 +83,11 @@ where
                 match self.parsers.right.parse_iter(self.source, self.start) {
                     Ok(iter) => {
                         self.iter = Either::Right(iter);
-                        return true;
+                        true
                     }
                     Err(_err) => {
                         // TODO report _err
-                        return false;
+                        false
                     }
                 }
             }
