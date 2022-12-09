@@ -26,15 +26,9 @@ impl<T, E> Clone for RegexParser<T, E> {
 
 impl<T, E> Copy for RegexParser<T, E> {}
 
-pub enum RegexParseIter<'parse, T, E> {
-    Init {
-        source: &'parse str,
-        start: usize,
-        parser: &'parse RegexParser<T, E>,
-    },
-    Done {
-        value: Option<T>,
-    },
+pub struct RegexParseIter<T> {
+    end: usize,
+    value: Option<T>,
 }
 
 impl<T, E> Parser for RegexParser<T, E>
@@ -44,7 +38,7 @@ where
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter<'parse> = RegexParseIter<'parse, T, E>
+    type Iter<'parse> = RegexParseIter<T>
     where
         E: 'parse;
 
@@ -53,62 +47,38 @@ where
         source: &'parse str,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        Ok(RegexParseIter::Init {
-            source,
-            start,
-            parser: self,
-        })
+        match (self.regex)().find(&source[start..]) {
+            None => Err(ParseError::new_expected(
+                source,
+                start,
+                any::type_name::<T>(),
+            )),
+            Some(m) => match (self.parse_fn)(m.as_str()) {
+                Ok(value) => Ok(RegexParseIter {
+                    end: start + m.end(),
+                    value: Some(value),
+                }),
+                Err(err) => Err(ParseError::new_from_str_failed(
+                    source,
+                    start,
+                    start + m.end(),
+                    any::type_name::<T>(),
+                    format!("{err}"),
+                )),
+            },
+        }
     }
 }
 
-impl<'parse, T, E> ParseIter for RegexParseIter<'parse, T, E>
-where
-    T: Any,
-    E: Display,
-{
+impl<T> ParseIter for RegexParseIter<T> {
     type RawOutput = (T,);
-
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        match *self {
-            RegexParseIter::Init {
-                source,
-                start,
-                parser,
-            } => match (parser.regex)().find(&source[start..]) {
-                Some(m) => match (parser.parse_fn)(m.as_str()) {
-                    Ok(value) => {
-                        *self = RegexParseIter::Done { value: Some(value) };
-                        Some(Ok(start + m.end()))
-                    }
-                    Err(err) => {
-                        *self = RegexParseIter::Done { value: None };
-                        Some(Err(ParseError::new_from_str_failed(
-                            source,
-                            start,
-                            start + m.end(),
-                            any::type_name::<T>(),
-                            format!("{err}"),
-                        )))
-                    }
-                },
-                None => {
-                    *self = RegexParseIter::Done { value: None };
-                    Some(Err(ParseError::new_expected(
-                        source,
-                        start,
-                        any::type_name::<T>(),
-                    )))
-                }
-            },
-            _ => None,
-        }
+    fn match_end(&self) -> usize {
+        self.end
     }
-
+    fn backtrack(&mut self) -> bool {
+        false
+    }
     fn take_data(&mut self) -> Self::RawOutput {
-        let v = match self {
-            RegexParseIter::Done { value } => value.take().unwrap(),
-            _ => unreachable!("matching failed"),
-        };
-        (v,)
+        (self.value.take().unwrap(),)
     }
 }

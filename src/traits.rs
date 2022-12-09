@@ -55,18 +55,15 @@ pub trait Parser {
     fn parse_raw(&self, s: &str) -> Result<Self::RawOutput> {
         let mut it = self.parse_iter(s, 0)?;
         let mut best_end: Option<usize> = None;
-        while let Some(parse) = it.next_parse() {
-            let end = parse?;
+        loop {
+            let end = it.match_end();
             if end == s.len() {
                 return Ok(it.take_data());
-            } else {
-                best_end = best_end.max(Some(end));
             }
-        }
-        if let Some(end) = best_end {
-            Err(ParseError::new_extra(s, end))
-        } else {
-            panic!("parse iterator broke the contract: no matches and no error");
+            best_end = best_end.max(Some(end));
+            if !it.backtrack() {
+                return Err(ParseError::new_extra(s, best_end.unwrap()));
+            }
         }
     }
 
@@ -126,15 +123,14 @@ pub trait ParseIter {
     /// The type this iterator can produce on a successful match.
     type RawOutput;
 
-    /// Try parsing the input.
+    /// Position at the end of the current match.
+    fn match_end(&self) -> usize;
+
+    /// Reject the current match and find the next-most-preferable match.
+    /// Returns true if another match was found, false if not.
     ///
-    /// The first time this is called, it should return either `Some(Ok(end))`
-    /// or `Some(Err(err))` indicating that parsing either succeeded or failed.
-    ///
-    /// Subsequently, it should return either `Some(Ok(end))` or `Some(None)`
-    /// to indicate that there either is or isn't another, less preferable
-    /// match.
-    fn next_parse(&mut self) -> Option<Result<usize>>;
+    /// Once this returns `false`, no more method calls should be made.
+    fn backtrack(&mut self) -> bool;
 
     /// Consume this iterator to extract data. This is called only after a
     /// successful `next_parse` call that returns `Some(Ok(offset))`.

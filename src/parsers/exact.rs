@@ -9,7 +9,6 @@ pub struct ExactParser {
 
 pub struct ExactParseIter {
     end: usize,
-    done: bool,
 }
 
 impl Parser for ExactParser {
@@ -25,7 +24,6 @@ impl Parser for ExactParser {
         if source[start..].starts_with(self.s) {
             Ok(ExactParseIter {
                 end: start + self.s.len(),
-                done: false,
             })
         } else {
             Err(ParseError::new_expected(source, start, self.s))
@@ -35,16 +33,12 @@ impl Parser for ExactParser {
 
 impl ParseIter for ExactParseIter {
     type RawOutput = ();
-
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        if self.done {
-            None
-        } else {
-            self.done = true;
-            Some(Ok(self.end))
-        }
+    fn match_end(&self) -> usize {
+        self.end
     }
-
+    fn backtrack(&mut self) -> bool {
+        false
+    }
     fn take_data(&mut self) {}
 }
 

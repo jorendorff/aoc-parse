@@ -10,7 +10,7 @@ pub struct CharParser {
 
 pub struct CharParseIter {
     c: char,
-    end: Option<usize>,
+    end: usize,
 }
 
 impl Parser for CharParser {
@@ -26,7 +26,7 @@ impl Parser for CharParser {
         match source[start..].chars().next() {
             Some(c) if (self.predicate)(c) => Ok(CharParseIter {
                 c,
-                end: Some(start + c.len_utf8()),
+                end: start + c.len_utf8(),
             }),
             _ => Err(ParseError::new_expected(source, start, self.noun)),
         }
@@ -35,15 +35,12 @@ impl Parser for CharParser {
 
 impl ParseIter for CharParseIter {
     type RawOutput = (char,);
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        if let Some(end) = self.end {
-            self.end = None;
-            Some(Ok(end))
-        } else {
-            None
-        }
+    fn match_end(&self) -> usize {
+        self.end
     }
-
+    fn backtrack(&mut self) -> bool {
+        false
+    }
     fn take_data(&mut self) -> (char,) {
         (self.c,)
     }

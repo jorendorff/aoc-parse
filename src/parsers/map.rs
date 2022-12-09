@@ -46,8 +46,12 @@ where
 {
     type RawOutput = T;
 
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        self.iter.next_parse()
+    fn match_end(&self) -> usize {
+        self.iter.match_end()
+    }
+
+    fn backtrack(&mut self) -> bool {
+        self.iter.backtrack()
     }
 
     fn take_data(&mut self) -> T {
@@ -105,8 +109,12 @@ where
 {
     type RawOutput = (T,);
 
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        self.iter.next_parse()
+    fn match_end(&self) -> usize {
+        self.iter.match_end()
+    }
+
+    fn backtrack(&mut self) -> bool {
+        self.iter.backtrack()
     }
 
     fn take_data(&mut self) -> (T,) {

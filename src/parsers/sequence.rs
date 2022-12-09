@@ -19,8 +19,8 @@ where
 {
     parsers: &'parse SequenceParser<Head, Tail>,
     source: &'parse str,
-    head_iter: Option<Head::Iter<'parse>>,
-    tail_iter: Option<Tail::Iter<'parse>>,
+    head_iter: Head::Iter<'parse>,
+    tail_iter: Tail::Iter<'parse>,
 }
 
 impl<Head, Tail> Parser for SequenceParser<Head, Tail>
@@ -42,14 +42,40 @@ where
         source: &'parse str,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        let iter = self.head.parse_iter(source, start)?;
+        let mut head_iter = self.head.parse_iter(source, start)?;
+        let tail_iter = first_tail_match::<Head, Tail>(source, &mut head_iter, &self.tail)?;
         Ok(SequenceParseIter {
             parsers: self,
             source,
-            head_iter: Some(iter),
-            tail_iter: None,
+            head_iter,
+            tail_iter,
         })
     }
+}
+
+fn first_tail_match<'parse, Head, Tail>(
+    source: &'parse str,
+    head: &mut Head::Iter<'parse>,
+    tail: &'parse Tail,
+) -> Result<Tail::Iter<'parse>>
+where
+    Head: Parser,
+    Tail: Parser,
+{
+    let mut foremost_error: Option<ParseError> = None;
+    loop {
+        let mid = head.match_end();
+        match tail.parse_iter(source, mid) {
+            Ok(tail_iter) => return Ok(tail_iter),
+            Err(err) => {
+                ParseError::keep_best(&mut foremost_error, err);
+            }
+        }
+        if !head.backtrack() {
+            break;
+        }
+    }
+    Err(foremost_error.unwrap())
 }
 
 impl<'parse, Head, Tail> ParseIter for SequenceParseIter<'parse, Head, Tail>
@@ -60,47 +86,32 @@ where
 {
     type RawOutput = <Head::RawOutput as RawOutputConcat<Tail::RawOutput>>::Output;
 
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        let mut foremost_error: Option<ParseError> = None;
-        loop {
-            if let Some(tail_iter) = &mut self.tail_iter {
-                match tail_iter.next_parse() {
-                    None => {}
-                    Some(Err(err)) => {
-                        ParseError::keep_best(&mut foremost_error, err);
-                    }
-                    Some(Ok(tail_end)) => return Some(Ok(tail_end)),
-                }
-                self.tail_iter = None;
-            } else if let Some(head_iter) = &mut self.head_iter {
-                match head_iter.next_parse() {
-                    None => {}
-                    Some(Err(err)) => {
-                        ParseError::keep_best(&mut foremost_error, err);
-                    }
-                    Some(Ok(head_end)) => {
-                        match self.parsers.tail.parse_iter(self.source, head_end) {
-                            Ok(iter) => {
-                                self.tail_iter = Some(iter);
-                            }
-                            Err(err) => {
-                                ParseError::keep_best(&mut foremost_error, err);
-                            }
-                        }
-                        continue;
-                    }
-                }
-                self.head_iter = None;
-                return foremost_error.map(Err);
-            } else {
-                return None;
+    fn match_end(&self) -> usize {
+        self.tail_iter.match_end()
+    }
+
+    fn backtrack(&mut self) -> bool {
+        if self.tail_iter.backtrack() {
+            return true;
+        }
+        if !self.head_iter.backtrack() {
+            return false;
+        }
+        match first_tail_match::<Head, Tail>(self.source, &mut self.head_iter, &self.parsers.tail) {
+            Ok(tail_iter) => {
+                self.tail_iter = tail_iter;
+                true
+            }
+            Err(_err) => {
+                // todo: deal with _err
+                false
             }
         }
     }
 
     fn take_data(&mut self) -> Self::RawOutput {
-        let head = self.head_iter.as_mut().unwrap().take_data();
-        let tail = self.tail_iter.as_mut().unwrap().take_data();
+        let head = self.head_iter.take_data();
+        let tail = self.tail_iter.take_data();
         head.concat(tail)
     }
 }

@@ -99,15 +99,13 @@ where
     let mut iter = parser.parse_iter(source, 0)?;
     let mut farthest = 0;
     loop {
-        match iter.next_parse() {
-            None => {
-                return Err(R::extra_err(source, farthest));
-            }
-            Some(Err(err)) => return Err(err),
-            Some(Ok(len)) if len == source.len() => {
-                return Ok(iter);
-            }
-            Some(Ok(len)) => farthest = farthest.max(len),
+        let end = iter.match_end();
+        if end == source.len() {
+            return Ok(iter);
+        }
+        farthest = farthest.max(end);
+        if !iter.backtrack() {
+            return Err(R::extra_err(source, farthest));
         }
     }
 }
@@ -148,11 +146,7 @@ where
         let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
             .map_err(|err| err.adjust_location(start))?;
 
-        Ok(RegionParseIter {
-            iter,
-            outer_end,
-            done: false,
-        })
+        Ok(RegionParseIter { iter, outer_end })
     }
 }
 
@@ -162,7 +156,6 @@ where
 {
     iter: P::Iter<'parse>,
     outer_end: usize,
-    done: bool,
 }
 
 impl<'parse, P> ParseIter for RegionParseIter<'parse, P>
@@ -171,13 +164,12 @@ where
 {
     type RawOutput = (P::Output,);
 
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        if self.done {
-            None
-        } else {
-            self.done = true;
-            Some(Ok(self.outer_end))
-        }
+    fn match_end(&self) -> usize {
+        self.outer_end
+    }
+
+    fn backtrack(&mut self) -> bool {
+        false
     }
 
     fn take_data(&mut self) -> Self::RawOutput {

@@ -1,8 +1,6 @@
 //! Alternation.
 
-use crate::{
-    error::Result, parsers::MapParser, types::ParserOutput, ParseError, ParseIter, Parser,
-};
+use crate::{error::Result, parsers::MapParser, types::ParserOutput, ParseIter, Parser};
 
 #[derive(Debug, PartialEq)]
 pub enum Either<A, B> {
@@ -69,46 +67,31 @@ where
 {
     type RawOutput = (Either<A::Output, B::Output>,);
 
-    fn next_parse(&mut self) -> Option<Result<usize>> {
-        let mut foremost_error: Option<ParseError> = None;
-        loop {
-            match &mut self.iter {
-                Either::Left(iter) => {
-                    match iter.next_parse() {
-                        None => {}
-                        Some(Err(err)) => {
-                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
-                            {
-                                foremost_error = Some(err);
-                            }
-                        }
-                        Some(Ok(end)) => return Some(Ok(end)),
-                    }
-                    match self.parsers.right.parse_iter(self.source, self.start) {
-                        Ok(iter) => self.iter = Either::Right(iter),
-                        Err(err) => {
-                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
-                            {
-                                foremost_error = Some(err);
-                            }
-                            return foremost_error.map(Err);
-                        }
-                    }
+    fn match_end(&self) -> usize {
+        match &self.iter {
+            Either::Left(iter) => iter.match_end(),
+            Either::Right(iter) => iter.match_end(),
+        }
+    }
+
+    fn backtrack(&mut self) -> bool {
+        match &mut self.iter {
+            Either::Left(iter) => {
+                if iter.backtrack() {
+                    return true;
                 }
-                Either::Right(iter) => {
-                    match iter.next_parse() {
-                        None => {}
-                        Some(Err(err)) => {
-                            if Some(err.location) > foremost_error.as_ref().map(|err| err.location)
-                            {
-                                foremost_error = Some(err);
-                            }
-                        }
-                        Some(Ok(end)) => return Some(Ok(end)),
+                match self.parsers.right.parse_iter(self.source, self.start) {
+                    Ok(iter) => {
+                        self.iter = Either::Right(iter);
+                        return true;
                     }
-                    return foremost_error.map(Err);
+                    Err(_err) => {
+                        // TODO report _err
+                        return false;
+                    }
                 }
             }
+            Either::Right(iter) => iter.backtrack(),
         }
     }
 
