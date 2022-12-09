@@ -37,23 +37,32 @@ where
 }
 
 #[test]
-fn test_macros() {
+fn test_hello_world() {
     let p = parser!("hello " "world");
     assert_parse_eq(&p, "hello world", ());
     assert_no_parse(&p, "hello ");
+}
 
+#[test]
+fn test_repeat_exact() {
     let p = parser!("hello " "strange "* "world");
     assert_parse(&p, "hello world");
     assert_parse(&p, "hello strange world");
     assert_parse(&p, "hello strange strange strange strange strange world");
+}
 
+#[test]
+fn test_alt_exact() {
     let p = parser!({"one", "two"});
     assert_parse(&p, "one");
     assert_parse(&p, "two");
     assert_no_parse(&p, "");
     assert_no_parse(&p, "onetwo");
     assert_no_parse(&p, "twoone");
+}
 
+#[test]
+fn test_lines_exact() {
     let p = parser!(lines("whee!"));
     assert_parse(&p, "");
     assert_parse(&p, "whee!\nwhee!\nwhee!\n");
@@ -61,7 +70,10 @@ fn test_macros() {
     assert_no_parse(&p, "whee!");
     assert_no_parse(&p, "\n");
     assert_no_parse(&p, "whee!\n\n");
+}
 
+#[test]
+fn test_unused_labels() {
     let p = parser!(_a: "ok" => "OK");
     assert_parse_eq(&p, "ok", "OK");
 
@@ -74,7 +86,10 @@ fn test_macros() {
     assert_no_parse(&p, " world");
     assert_no_parse(&p, "world");
     assert_no_parse(&p, "hello world ");
+}
 
+#[test]
+fn test_alt_map() {
     let bit = parser!({ "0" => false, "1" => true });
     let p = parser!(bit*);
     assert_parse_eq(
