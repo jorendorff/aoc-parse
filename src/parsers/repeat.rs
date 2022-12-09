@@ -76,19 +76,9 @@ impl<Pattern, Sep> RepeatParser<Pattern, Sep> {
 
 // Internal state of the next() method.
 enum Mode {
-    // Need to call backtrack() on the top iter. If that succeeds, advance again.
     BacktrackTopIter,
-
-    // Scan forward, hoping to find matches and create new iterators.
     Advance,
-
-    // We just called backtrace() on the top iter, and it failed. Need
-    // to discard it.
     Exhausted,
-
-    // We just either popped an exhausted iterator, or failed to create
-    // one. If the current status is an overall match, yield that. Then
-    // transition to BacktrackTopIter mode.
     YieldThenBacktrack,
 }
 
@@ -101,13 +91,22 @@ where
         self.starts.len()
     }
 
+    // True if we've matched as many separators as patterns, so pattern is next.
+    fn is_pattern_next(&self) -> bool {
+        assert_eq!(
+            self.pattern_iters.len() + self.sep_iters.len(),
+            self.starts.len()
+        );
+        self.pattern_iters.len() == self.sep_iters.len()
+    }
+
     fn end(&self) -> usize {
         if self.num_matches() == 0 {
             self.start
-        } else if self.num_matches() % 2 == 1 {
-            self.pattern_iters.last().unwrap().match_end()
-        } else {
+        } else if self.is_pattern_next() {
             self.sep_iters.last().unwrap().match_end()
+        } else {
+            self.pattern_iters.last().unwrap().match_end()
         }
     }
 
@@ -121,7 +120,7 @@ where
             assert_eq!(self.pattern_iters.len(), (self.num_matches() + 1) / 2);
             assert_eq!(self.sep_iters.len(), self.num_matches() / 2);
 
-            if self.num_matches() % 2 == 0 {
+            if self.is_pattern_next() {
                 let start = match self.starts.last().copied() {
                     Some(last) => last,
                     None => self.start,
@@ -164,6 +163,8 @@ where
         loop {
             match mode {
                 Mode::BacktrackTopIter => {
+                    // Need to call backtrack() on the top iter. If that
+                    // succeeds, advance again.
                     assert_eq!(self.pattern_iters.len(), (self.num_matches() + 1) / 2);
                     assert_eq!(self.sep_iters.len(), self.num_matches() / 2);
 
@@ -171,7 +172,7 @@ where
                         // No more iterators. We exhausted all possibilities.
                         return false;
                     }
-                    let new_match_end = if self.starts.len() % 2 == 1 {
+                    let new_match_end = if !self.is_pattern_next() {
                         let pattern_iter = self.pattern_iters.last_mut().unwrap();
                         pattern_iter.backtrack().then(|| pattern_iter.match_end())
                     } else {
@@ -191,31 +192,38 @@ where
                     }
                 }
                 Mode::Advance => {
+                    // Scan forward, hoping to find matches and create new
+                    // iterators.
                     let _ = self.advance();
                     mode = Mode::YieldThenBacktrack;
                 }
                 Mode::Exhausted => {
-                    // The current top-of-stack iterator is exhausted and needs to
-                    // be discarded.
+                    // We just called backtrace() on the top iter, and it
+                    // failed. It's exhausted and needs to be discarded.
                     assert_eq!(self.pattern_iters.len(), (self.num_matches() + 1) / 2);
                     assert_eq!(self.sep_iters.len(), self.num_matches() / 2);
 
-                    if self.num_matches() % 2 == 1 {
-                        self.pattern_iters.pop();
-                    } else {
+                    if self.is_pattern_next() {
                         self.sep_iters.pop();
+                    } else {
+                        self.pattern_iters.pop();
                     }
                     self.starts.pop();
                     mode = Mode::YieldThenBacktrack;
                 }
 
                 Mode::YieldThenBacktrack => {
-                    // Repeats are "greedy", so we need to yield the longest match
-                    // first. This means returning only "on the way out" (a
-                    // postorder walk of the tree of possible parses).
+                    // We just either popped an exhausted iterator, or failed
+                    // to create one. If the current status is an overall
+                    // match, yield that. Then transition to BacktrackTopIter
+                    // mode.
+                    //
+                    // (Repeats are "greedy", so we need to yield the longest match
+                    // first. This means returning only "on the way out", a
+                    // postorder walk of the tree of possible parses.)
                     assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
                     assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
-                    if self.params.check_repeat_count(self.starts.len()) {
+                    if self.params.check_repeat_count(self.num_matches()) {
                         return true;
                     }
                     mode = Mode::BacktrackTopIter;
