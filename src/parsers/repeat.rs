@@ -26,7 +26,6 @@ where
     start: usize,
     pattern_iters: Vec<Pattern::Iter<'parse>>,
     sep_iters: Vec<Sep::Iter<'parse>>,
-    starts: Vec<usize>,
 }
 
 impl<Pattern, Sep> Parser for RepeatParser<Pattern, Sep>
@@ -52,7 +51,6 @@ where
             start,
             pattern_iters: vec![],
             sep_iters: vec![],
-            starts: vec![],
         };
         if !iter.next(Mode::Advance) {
             return Err(ParseError::new_extra(source, iter.end()));
@@ -88,18 +86,15 @@ where
     Sep: Parser,
 {
     fn num_matches(&self) -> usize {
-        self.starts.len()
+        self.pattern_iters.len() + self.sep_iters.len()
     }
 
     // True if we've matched as many separators as patterns, so pattern is next.
     fn is_pattern_next(&self) -> bool {
-        assert_eq!(
-            self.pattern_iters.len() + self.sep_iters.len(),
-            self.starts.len()
-        );
         self.pattern_iters.len() == self.sep_iters.len()
     }
 
+    /// End position of what's been matched so far.
     fn end(&self) -> usize {
         if self.num_matches() == 0 {
             self.start
@@ -110,8 +105,8 @@ where
         }
     }
 
-    /// Preconditions: starts and iters are in sync.
-    /// Either there are no iters or we just successfully backtracked the foremost iter.
+    /// Precondition: Either there are no iters or we just successfully
+    /// backtracked the foremost iter.
     fn advance(&mut self) -> Result<()> {
         // TODO: When considering creating a new iterator, if we have already
         // matched `max` times, don't bother; no matches can come of it.
@@ -121,10 +116,7 @@ where
             assert_eq!(self.sep_iters.len(), self.num_matches() / 2);
 
             if self.is_pattern_next() {
-                let start = match self.starts.last().copied() {
-                    Some(last) => last,
-                    None => self.start,
-                };
+                let start = self.end();
                 match self.params.pattern.parse_iter(self.source, start) {
                     Err(err) => {
                         if !advanced {
@@ -134,14 +126,13 @@ where
                         }
                     }
                     Ok(iter) => {
-                        self.starts.push(iter.match_end());
                         self.pattern_iters.push(iter);
                         advanced = true;
                     }
                 }
             }
 
-            let start = self.starts.last().copied().unwrap();
+            let start = self.end();
             match self.params.sep.parse_iter(self.source, start) {
                 Err(err) => {
                     if !advanced {
@@ -151,7 +142,6 @@ where
                     }
                 }
                 Ok(iter) => {
-                    self.starts.push(iter.match_end());
                     self.sep_iters.push(iter);
                     advanced = true;
                 }
@@ -172,23 +162,20 @@ where
                         // No more iterators. We exhausted all possibilities.
                         return false;
                     }
-                    let new_match_end = if !self.is_pattern_next() {
-                        let pattern_iter = self.pattern_iters.last_mut().unwrap();
-                        pattern_iter.backtrack().then(|| pattern_iter.match_end())
+                    let ok = if !self.is_pattern_next() {
+                        self.pattern_iters.last_mut().unwrap().backtrack()
                     } else {
-                        let sep_iter = self.sep_iters.last_mut().unwrap();
-                        sep_iter.backtrack().then(|| sep_iter.match_end())
+                        self.sep_iters.last_mut().unwrap().backtrack()
                     };
 
-                    if let Some(point) = new_match_end {
+                    mode = if ok {
                         // Got a match! But don't return it to the user yet.
                         // Repeats are "greedy"; we press on to see if we can
                         // match again! If we just matched `pattern`, try
                         // `sep`; if we just matched `sep`, try `pattern`.
-                        *self.starts.last_mut().unwrap() = point;
-                        mode = Mode::Advance;
+                        Mode::Advance
                     } else {
-                        mode = Mode::Exhausted;
+                        Mode::Exhausted
                     }
                 }
                 Mode::Advance => {
@@ -208,7 +195,6 @@ where
                     } else {
                         self.pattern_iters.pop();
                     }
-                    self.starts.pop();
                     mode = Mode::YieldThenBacktrack;
                 }
 
@@ -221,8 +207,6 @@ where
                     // (Repeats are "greedy", so we need to yield the longest match
                     // first. This means returning only "on the way out", a
                     // postorder walk of the tree of possible parses.)
-                    assert_eq!(self.pattern_iters.len(), (self.starts.len() + 1) / 2);
-                    assert_eq!(self.sep_iters.len(), self.starts.len() / 2);
                     if self.params.check_repeat_count(self.num_matches()) {
                         return true;
                     }
