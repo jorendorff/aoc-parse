@@ -6,7 +6,7 @@ pub struct ExactParseIter {
     end: usize,
 }
 
-impl Parser for &'static str {
+impl Parser for str {
     type Output = ();
     type RawOutput = ();
     type Iter<'parse> = ExactParseIter;
@@ -16,7 +16,7 @@ impl Parser for &'static str {
         source: &'parse str,
         start: usize,
     ) -> Result<ExactParseIter> {
-        if source[start..].starts_with(*self) {
+        if source[start..].starts_with(self) {
             Ok(ExactParseIter {
                 end: start + self.len(),
             })
@@ -55,4 +55,19 @@ impl ParseIter for ExactParseIter {
         false
     }
     fn into_raw_output(self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::testing::*;
+
+    #[test]
+    fn test_string_lifetime() {
+        // A string that is locally scoped can serve as a constant for a
+        // parser. No reason why not. The parser lifetime is limited to the
+        // lifetime of the string.
+        let x = format!("{} {}!", "hello", "world");
+        let p: &str = &x;
+        assert_parse_eq(&p, "hello world!", ());
+    }
 }

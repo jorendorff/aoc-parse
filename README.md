@@ -132,6 +132,8 @@ Here are the pieces that you can use in a pattern:
     assert_eq!(amount.parse("1/4 tsp").unwrap(), (1, 4));
     ```
 
+    An identifier can also refer to a string or character constant.
+
 *   <code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
     but instead of converting it to some value, simply return the matched
     characters as a `String`.

@@ -96,8 +96,8 @@ from_str_radix_parsers!(
 
 #[cfg(test)]
 mod tests {
-    use crate::parsers::tests::{assert_no_parse, assert_parse_eq};
-    use crate::parsers::*;
+    use super::*;
+    use crate::testing::*;
 
     #[test]
     fn test_parse_hex() {

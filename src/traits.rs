@@ -138,7 +138,7 @@ pub trait ParseIter {
 
 impl<'a, P> Parser for &'a P
 where
-    P: Parser,
+    P: Parser + ?Sized,
 {
     type Output = P::Output;
     type RawOutput = P::RawOutput;

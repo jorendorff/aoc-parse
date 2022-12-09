@@ -72,33 +72,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Debug;
-
     use super::*;
-
-    #[track_caller]
-    pub(crate) fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
-    where
-        P: Parser,
-        P::Output: PartialEq<E> + Debug,
-        E: Debug,
-    {
-        match parser.parse(s) {
-            Err(err) => panic!("parse failed: {}", err),
-            Ok(val) => assert_eq!(val, expected),
-        }
-    }
-
-    #[track_caller]
-    pub(crate) fn assert_no_parse<P>(parser: &P, s: &str)
-    where
-        P: Parser,
-        P::Output: Debug,
-    {
-        if let Ok(m) = parser.parse(s) {
-            panic!("expected no match, got: {:?}", m);
-        }
-    }
+    use crate::testing::*;
 
     #[test]
     fn test_parse() {
