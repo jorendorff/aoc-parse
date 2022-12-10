@@ -138,3 +138,48 @@ impl<'parse> ParseContext<'parse> {
         self.report(ParseError::new_extra(self.source(), location))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::parsers::{lines, sections, u64};
+    use crate::testing::*;
+
+    #[test]
+    fn test_repeat_region_errors() {
+        let p = lines(u64);
+
+        let example1 = "\
+            194832\n\
+            2094235\n\
+            374274\n\
+            4297534:wq\n\
+            59842843\n\
+        ";
+
+        assert_parse_error(
+            &p,
+            example1,
+            "matched part of the line, but not all of it at line 4 column 8",
+        );
+
+        let p = sections(lines(u64));
+
+        let example2 = "\
+            1\n\
+            \n\
+            3\n\
+            4\n\
+            5\n\
+            6:wq\n\
+            \n\
+            8\n\
+            9\n\
+        ";
+
+        assert_parse_error(
+            &p,
+            example2,
+            "matched part of the line, but not all of it at line 6 column 2",
+        );
+    }
+}
