@@ -2,7 +2,7 @@
 
 use crate::parsers::MapParser;
 use crate::types::ParserOutput;
-use crate::{ParseContext, ParseError, Result};
+use crate::{ParseContext, Reported, Result};
 
 /// Trait implemented by all parsers.
 ///
@@ -49,23 +49,22 @@ pub trait Parser {
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>>;
+    ) -> Result<Self::Iter<'parse>, Reported>;
 
     /// Like `parse` but produce the output in its [raw form][Self::RawOutput].
     fn parse_raw(&self, s: &str) -> Result<Self::RawOutput> {
         let mut ctx = ParseContext::new(s);
-        let mut it = self.parse_iter(&mut ctx, 0)?;
-        let mut best_end: Option<usize> = None;
-        loop {
-            let end = it.match_end();
-            if end == s.len() {
-                return Ok(it.into_raw_output());
-            }
-            best_end = best_end.max(Some(end));
-            if !it.backtrack(&mut ctx) {
-                return Err(ParseError::new_extra(s, best_end.unwrap()));
+        let mut it = match self.parse_iter(&mut ctx, 0) {
+            Ok(iter) => iter,
+            Err(Reported) => return Err(ctx.into_reported_error()),
+        };
+        while it.match_end() != s.len() {
+            ctx.error_extra(it.match_end());
+            if it.backtrack(&mut ctx).is_err() {
+                return Err(ctx.into_reported_error());
             }
         }
+        Ok(it.into_raw_output())
     }
 
     /// Produce a new parser that behaves like this parser but additionally
@@ -131,7 +130,7 @@ pub trait ParseIter<'parse> {
     /// Returns true if another match was found, false if not.
     ///
     /// Once this returns `false`, no more method calls should be made.
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool;
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported>;
 
     /// Consume this iterator to extract data.
     fn into_raw_output(self) -> Self::RawOutput;
@@ -153,7 +152,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         <P as Parser>::parse_iter(self, context, start)
     }
 }

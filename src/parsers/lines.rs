@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use crate::{
     parsers::{star, EmptyParser, RepeatParser},
     types::ParserOutput,
-    ParseContext, ParseError, ParseIter, Parser, Result,
+    ParseContext, ParseError, ParseIter, Parser, Reported, Result,
 };
 
 /// This is implemented for `Line` and `Section`, the two region types.
@@ -13,7 +13,7 @@ pub trait Region {
     /// True if `start` is an offset within `source` that's the start of this
     /// type of region. Caller promises that `start` is at least in bounds and
     /// a character boundary in `source`.
-    fn is_at_start(source: &str, start: usize) -> bool;
+    fn check_at_start(context: &mut ParseContext, start: usize) -> Result<(), Reported>;
 
     /// If a suitable end is found for this region (`'\n'` for a line, `"\n\n"`
     /// or `/\n\Z/` for a section) then return a pair of
@@ -22,11 +22,9 @@ pub trait Region {
     ///     interior; and
     /// -   the end of the delimiter, for the purpose of reporting how much data
     ///     we consumed on a successful parse.
-    fn find_end(source: &str, start: usize) -> Option<(usize, usize)>;
+    fn find_end(context: &mut ParseContext, start: usize) -> Result<(usize, usize), Reported>;
 
-    fn not_at_start_err(source: &str, start: usize) -> ParseError;
-
-    fn extra_err(source: &str, end: usize) -> ParseError;
+    fn report_incomplete_match(context: &mut ParseContext, end: usize) -> Reported;
 }
 
 /// A line is a sequence of zero or more non-newline characters, starting
@@ -35,22 +33,25 @@ pub trait Region {
 pub struct Line;
 
 impl Region for Line {
-    fn is_at_start(source: &str, start: usize) -> bool {
-        start == 0 || source[..start].ends_with('\n')
+    fn check_at_start(context: &mut ParseContext, start: usize) -> Result<(), Reported> {
+        let source = context.source();
+        if start == 0 || source[..start].ends_with('\n') {
+            Ok(())
+        } else {
+            Err(context.report(ParseError::new_bad_line_start(source, start)))
+        }
     }
 
-    fn find_end(source: &str, start: usize) -> Option<(usize, usize)> {
+    fn find_end(context: &mut ParseContext, start: usize) -> Result<(usize, usize), Reported> {
+        let source = context.source();
         source[start..]
             .find('\n')
             .map(|offset| (start + offset, start + offset + 1))
+            .ok_or_else(|| context.error_expected(source.len(), "\n"))
     }
 
-    fn not_at_start_err(source: &str, start: usize) -> ParseError {
-        ParseError::new_bad_line_start(source, start)
-    }
-
-    fn extra_err(source: &str, end: usize) -> ParseError {
-        ParseError::new_line_extra(source, end)
+    fn report_incomplete_match(context: &mut ParseContext, end: usize) -> Reported {
+        context.report(ParseError::new_line_extra(context.source(), end))
     }
 }
 
@@ -60,31 +61,34 @@ impl Region for Line {
 pub struct Section;
 
 impl Region for Section {
-    fn is_at_start(source: &str, start: usize) -> bool {
-        start == 0 || &source[..start] == "\n" || source[..start].ends_with("\n\n")
-    }
-
-    fn find_end(source: &str, start: usize) -> Option<(usize, usize)> {
-        // FIXME BUG: unclear what this should do when looking at an empty
-        // section at end of input. presumably not repeat forever.
-        match source[start..].find("\n\n") {
-            // ending at a blank line
-            Some(index) => Some((start + index + 1, start + index + 2)),
-            // ending at the end of `source`
-            None if start < source.len() && source.ends_with('\n') => {
-                Some((source.len(), source.len()))
-            }
-            // no end-of-section delimiter found
-            None => None,
+    fn check_at_start(context: &mut ParseContext, start: usize) -> Result<(), Reported> {
+        let source = context.source();
+        if start == 0 || &source[..start] == "\n" || source[..start].ends_with("\n\n") {
+            Ok(())
+        } else {
+            Err(context.report(ParseError::new_bad_section_start(source, start)))
         }
     }
 
-    fn not_at_start_err(source: &str, start: usize) -> ParseError {
-        ParseError::new_bad_section_start(source, start)
+    fn find_end(context: &mut ParseContext, start: usize) -> Result<(usize, usize), Reported> {
+        // FIXME BUG: unclear what this should do when looking at an empty
+        // section at end of input. presumably not repeat forever. (why does
+        // this not always hang forever if you try to use `sections`?)
+        let source = context.source();
+        match source[start..].find("\n\n") {
+            // ending at a blank line
+            Some(index) => Ok((start + index + 1, start + index + 2)),
+            // ending at the end of `source`
+            None if start < source.len() && source.ends_with('\n') => {
+                Ok((source.len(), source.len()))
+            }
+            // no end-of-section delimiter found
+            None => Err(context.error_expected(source.len(), "\n")),
+        }
     }
 
-    fn extra_err(source: &str, end: usize) -> ParseError {
-        ParseError::new_section_extra(source, end)
+    fn report_incomplete_match(context: &mut ParseContext, end: usize) -> Reported {
+        context.report(ParseError::new_section_extra(context.source(), end))
     }
 }
 
@@ -96,18 +100,17 @@ where
     P: Parser,
 {
     let mut context = ParseContext::new(source);
-    let mut iter = parser.parse_iter(&mut context, 0)?;
-    let mut farthest = 0;
-    loop {
-        let end = iter.match_end();
-        if end == source.len() {
-            return Ok(iter);
-        }
-        farthest = farthest.max(end);
-        if !iter.backtrack(&mut context) {
-            return Err(R::extra_err(source, farthest));
+    let mut iter = match parser.parse_iter(&mut context, 0) {
+        Ok(iter) => iter,
+        Err(Reported) => return Err(context.into_reported_error()),
+    };
+    while iter.match_end() != source.len() {
+        R::report_incomplete_match(&mut context, iter.match_end());
+        if iter.backtrack(&mut context).is_err() {
+            return Err(context.into_reported_error());
         }
     }
+    Ok(iter)
 }
 
 #[derive(Copy, Clone)]
@@ -132,19 +135,11 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
-        let source = context.source();
-        if !R::is_at_start(source, start) {
-            return Err(R::not_at_start_err(source, start));
-        }
-        let (inner_end, outer_end) = match R::find_end(source, start) {
-            Some(pair) => pair,
-            None => {
-                return Err(context.error_expected(source.len(), "\n"));
-            }
-        };
+    ) -> Result<Self::Iter<'parse>, Reported> {
+        R::check_at_start(context, start)?;
+        let (inner_end, outer_end) = R::find_end(context, start)?;
 
-        let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
+        let iter = match_fully::<R, P>(&self.parser, &context.source()[start..inner_end])
             .map_err(|err| context.report(err.adjust_location(start)))?;
 
         Ok(RegionParseIter { iter, outer_end })
@@ -169,8 +164,8 @@ where
         self.outer_end
     }
 
-    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
-        false
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        Err(Reported)
     }
 
     fn into_raw_output(self) -> Self::RawOutput {

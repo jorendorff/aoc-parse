@@ -7,7 +7,7 @@ use std::{
 
 use regex::Regex;
 
-use crate::{ParseContext, ParseIter, Parser, Result};
+use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
 pub struct RegexParser<T, E> {
     pub(crate) regex: fn() -> &'static Regex,
@@ -46,7 +46,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         match (self.regex)().find(&context.source()[start..]) {
             None => Err(context.error_expected(start, any::type_name::<T>())),
             Some(m) => match (self.parse_fn)(m.as_str()) {
@@ -70,8 +70,8 @@ impl<'parse, T> ParseIter<'parse> for RegexParseIter<T> {
     fn match_end(&self) -> usize {
         self.end
     }
-    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
-        false
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        Err(Reported)
     }
     fn into_raw_output(self) -> (T,) {
         (self.value,)

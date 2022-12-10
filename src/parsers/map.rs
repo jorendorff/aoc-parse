@@ -1,6 +1,6 @@
 //! Mapping parsers.
 
-use crate::{types::ParserOutput, ParseContext, ParseIter, Parser, Result};
+use crate::{types::ParserOutput, ParseContext, ParseIter, Parser, Reported, Result};
 
 pub struct MapRawParser<P, F> {
     parser: P,
@@ -32,7 +32,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let iter = self.parser.parse_iter(context, start)?;
         let mapper = &self.mapper;
         Ok(MapRawParseIter { iter, mapper })
@@ -50,7 +50,7 @@ where
         self.iter.match_end()
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         self.iter.backtrack(context)
     }
 
@@ -95,7 +95,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let iter = self.parser.parse_iter(context, start)?;
         let mapper = &self.mapper;
         Ok(MapParseIter { iter, mapper })
@@ -113,7 +113,7 @@ where
         self.iter.match_end()
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         self.iter.backtrack(context)
     }
 

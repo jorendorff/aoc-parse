@@ -1,6 +1,8 @@
 //! Alternation.
 
-use crate::{parsers::MapParser, types::ParserOutput, ParseContext, ParseIter, Parser, Result};
+use crate::{
+    parsers::MapParser, types::ParserOutput, ParseContext, ParseIter, Parser, Reported, Result,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Either<A, B> {
@@ -40,15 +42,10 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let iter = match self.left.parse_iter(context, start) {
             Ok(iter) => Either::Left(iter),
-            Err(left_err) => match self.right.parse_iter(context, start) {
-                Ok(iter) => Either::Right(iter),
-                Err(right_err) => {
-                    return Err(left_err.max_location(right_err));
-                }
-            },
+            Err(Reported) => Either::Right(self.right.parse_iter(context, start)?),
         };
         Ok(EitherParseIter {
             start,
@@ -72,19 +69,14 @@ where
         }
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         match &mut self.iter {
             Either::Left(iter) => {
-                if iter.backtrack(context) {
-                    return true;
+                if iter.backtrack(context).is_ok() {
+                    return Ok(());
                 }
-                match self.parsers.right.parse_iter(context, self.start) {
-                    Ok(iter) => {
-                        self.iter = Either::Right(iter);
-                        true
-                    }
-                    Err(_err) => false,
-                }
+                self.iter = Either::Right(self.parsers.right.parse_iter(context, self.start)?);
+                Ok(())
             }
             Either::Right(iter) => iter.backtrack(context),
         }

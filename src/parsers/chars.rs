@@ -1,5 +1,5 @@
 use crate::parsers::MapParser;
-use crate::{ParseContext, ParseIter, Parser, Result};
+use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -22,7 +22,7 @@ impl Parser for CharParser {
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         match context.source()[start..].chars().next() {
             Some(c) if (self.predicate)(c) => Ok(CharParseIter {
                 c,
@@ -38,8 +38,8 @@ impl<'parse> ParseIter<'parse> for CharParseIter {
     fn match_end(&self) -> usize {
         self.end
     }
-    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
-        false
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        Err(Reported)
     }
     fn into_raw_output(self) -> (char,) {
         (self.c,)

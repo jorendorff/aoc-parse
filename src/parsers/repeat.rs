@@ -3,7 +3,7 @@
 use crate::{
     parsers::{empty, EmptyParser},
     types::ParserOutput,
-    ParseContext, ParseIter, Parser, Result,
+    ParseContext, ParseIter, Parser, Reported, Result,
 };
 
 #[derive(Clone, Copy)]
@@ -42,16 +42,14 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let mut iter = RepeatParseIter {
             params: self,
             start,
             pattern_iters: vec![],
             sep_iters: vec![],
         };
-        if !iter.next(context, Mode::Advance) {
-            return Err(context.error_extra(iter.end()));
-        }
+        iter.next(context, Mode::Advance)?;
         Ok(iter)
     }
 }
@@ -104,49 +102,29 @@ where
 
     /// Precondition: Either there are no iters or we just successfully
     /// backtracked the foremost iter.
-    fn advance(&mut self, context: &mut ParseContext<'parse>) -> Result<()> {
+    ///
+    /// This never returns success because we keep advancing until we fail to
+    /// match, then return the error without trying to backtrack.
+    fn advance(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         // TODO: When considering creating a new iterator, if we have already
         // matched `max` times, don't bother; no matches can come of it.
-        let mut advanced = false;
         loop {
             assert_eq!(self.pattern_iters.len(), (self.num_matches() + 1) / 2);
             assert_eq!(self.sep_iters.len(), self.num_matches() / 2);
 
             if self.is_pattern_next() {
                 let start = self.end();
-                match self.params.pattern.parse_iter(context, start) {
-                    Err(err) => {
-                        if !advanced {
-                            return Err(err);
-                        } else {
-                            return Ok(());
-                        }
-                    }
-                    Ok(iter) => {
-                        self.pattern_iters.push(iter);
-                        advanced = true;
-                    }
-                }
+                let iter = self.params.pattern.parse_iter(context, start)?;
+                self.pattern_iters.push(iter);
             }
 
             let start = self.end();
-            match self.params.sep.parse_iter(context, start) {
-                Err(err) => {
-                    if !advanced {
-                        return Err(err);
-                    } else {
-                        return Ok(());
-                    }
-                }
-                Ok(iter) => {
-                    self.sep_iters.push(iter);
-                    advanced = true;
-                }
-            }
+            let iter = self.params.sep.parse_iter(context, start)?;
+            self.sep_iters.push(iter);
         }
     }
 
-    fn next(&mut self, context: &mut ParseContext<'parse>, mut mode: Mode) -> bool {
+    fn next(&mut self, context: &mut ParseContext<'parse>, mut mode: Mode) -> Result<(), Reported> {
         loop {
             match mode {
                 Mode::BacktrackTopIter => {
@@ -157,27 +135,26 @@ where
 
                     if self.num_matches() == 0 {
                         // No more iterators. We exhausted all possibilities.
-                        return false;
+                        return Err(Reported);
                     }
-                    let ok = if !self.is_pattern_next() {
-                        self.pattern_iters.last_mut().unwrap().backtrack(context)
-                    } else {
+                    let backtrack_result = if self.is_pattern_next() {
                         self.sep_iters.last_mut().unwrap().backtrack(context)
+                    } else {
+                        self.pattern_iters.last_mut().unwrap().backtrack(context)
                     };
 
-                    mode = if ok {
+                    mode = match backtrack_result {
                         // Got a match! But don't return it to the user yet.
                         // Repeats are "greedy"; we press on to see if we can
                         // match again! If we just matched `pattern`, try
                         // `sep`; if we just matched `sep`, try `pattern`.
-                        Mode::Advance
-                    } else {
-                        Mode::Exhausted
-                    }
+                        Ok(()) => Mode::Advance,
+                        Err(Reported) => Mode::Exhausted,
+                    };
                 }
                 Mode::Advance => {
                     // Scan forward, hoping to find matches and create new
-                    // iterators.
+                    // iterators. (`let _ =` because advance always fails.)
                     let _ = self.advance(context);
                     mode = Mode::YieldThenBacktrack;
                 }
@@ -205,7 +182,7 @@ where
                     // first. This means returning only "on the way out", a
                     // postorder walk of the tree of possible parses.)
                     if self.params.check_repeat_count(self.num_matches()) {
-                        return true;
+                        return Ok(());
                     }
                     mode = Mode::BacktrackTopIter;
                 }
@@ -225,7 +202,7 @@ where
         self.end()
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         self.next(context, Mode::BacktrackTopIter)
     }
 

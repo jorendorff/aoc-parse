@@ -1,6 +1,6 @@
 //! Parser that matches a particular exact string.
 
-use crate::{ParseContext, ParseIter, Parser, Result};
+use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
 pub struct ExactParseIter {
     end: usize,
@@ -15,7 +15,7 @@ impl Parser for str {
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<ExactParseIter> {
+    ) -> Result<ExactParseIter, Reported> {
         if context.source()[start..].starts_with(self) {
             Ok(ExactParseIter {
                 end: start + self.len(),
@@ -35,7 +35,7 @@ impl Parser for char {
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<ExactParseIter> {
+    ) -> Result<ExactParseIter, Reported> {
         if context.source()[start..].starts_with(*self) {
             Ok(ExactParseIter {
                 end: start + self.len_utf8(),
@@ -51,8 +51,8 @@ impl<'parse> ParseIter<'parse> for ExactParseIter {
     fn match_end(&self) -> usize {
         self.end
     }
-    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
-        false
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        Err(Reported)
     }
     fn into_raw_output(self) {}
 }

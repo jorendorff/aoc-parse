@@ -1,6 +1,6 @@
 //! The parser used by the `string()` function.
 
-use crate::{ParseContext, ParseIter, Parser, Result};
+use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
 #[derive(Clone, Copy)]
 pub struct StringParser<P> {
@@ -30,7 +30,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let iter = self.parser.parse_iter(context, start)?;
         Ok(StringParseIter {
             source: context.source(),
@@ -50,7 +50,7 @@ where
         self.iter.match_end()
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         self.iter.backtrack(context)
     }
 

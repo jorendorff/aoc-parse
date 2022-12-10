@@ -128,14 +128,6 @@ impl ParseError {
         )
     }
 
-    pub(crate) fn max_location(self, other: Self) -> Self {
-        if self.location >= other.location {
-            self
-        } else {
-            other
-        }
-    }
-
     /// This is used when a subparser is used on a slice of the original
     /// string. If the subparse fails, the error location is a position within
     /// the slice. This can be used, passing the start offset of the slice, to

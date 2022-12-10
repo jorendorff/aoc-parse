@@ -2,21 +2,66 @@
 
 use crate::ParseError;
 
+/// Error type for when an error has been reported to ParseContext.
+///
+/// It's OK to discard this kind of error and return success. See
+/// `ParseContext` for an example.
+pub struct Reported;
+
 /// Contains the source text we're parsing and tracks errors.
 ///
 /// We track errors in the ParseContext, not Results, because often a parser
 /// produces both a successful match *and* the error that will later prove to
 /// be the best error message for the overall parse attempt.
 ///
-/// For example, consider `parser!(line(u32)+)` parsing the input
-/// `1\n2\n3\n4\n5:wq\n6\n7\n`. The actual problem is that someone accidentally
-/// typed `:wq` on line 5. But what will happen here is that `line(u32)+`
-/// successfully parses the first 4 lines. If we don't track the error we
-/// encountered when trying to parse `5:wq` as a `u32`, but content ourselves
-/// with the successful match `line(u32)+` produces, the best error message we
-/// can ultimately produce is something like "found extra text after a
-/// successful match at line 5, column 1".
+/// # The `:wq` example
 ///
+/// For example, consider `parser!(line(u32)+)` parsing the following input:
+///
+/// ```text
+/// 1
+/// 2
+/// 3
+/// 4:wq
+/// 5
+/// ```
+///
+/// Clearly, someone accidentally typed `:wq` on line 4. But what will happen
+/// here is that `line(u32)+` successfully matches the first 3 lines. If we
+/// don't track the error we encountered when trying to parse `5:wq` as a
+/// `u32`, but content ourselves with the successful match `line(u32)+`
+/// produces, the best error message we can ultimately produce is something
+/// like "found extra text after a successful match at line 4, column 1".
+///
+/// Here's how we now handle these success-failures:
+///
+/// -   `u32` returns success, matching `4`.
+///
+/// -   `line(u32)` reports an error to the context (at line 4 column 2) and
+///      returns `Reported`, because `u32` didn't match the entire line.
+///
+/// -   `line(u32)+` then *discards* the `Reported` error, backtracks,
+///     and returns a successful match for the first 3 lines.
+///
+/// -   The top-level parser sees that `line(u32)+` didn't match the entire
+///     input, and reports an error to the context at line 4 column 1.
+///     But we already have a previous error where we had got further,
+///     so this error is ignored.
+///
+/// -   The error at line 4 column 2 is taken from the context and returned to
+///     the user.
+///
+/// # Rationale: Design alternatives
+///
+/// To implement this without `ParseContext`, we could have implemented a
+/// `TigerResult<T, E>` type that can be `Ok(T)`, `Err(E)`, or `OkBut(T, E)`,
+/// the last containing *both* a success value *and* an excuse explaining why
+/// we did not succeed even more. The forwardmost error would be propagated
+/// there instead of being stored in the context. We would use `TigerResult<T,
+/// ParseError>` instead of `Result<T, Reported>` everywhere. Both ways have
+/// advantages. Both are pretty weird for Rust. The way of the context is
+/// something I've wanted to explore in Rust; and it lets us keep using the `?`
+/// try operator.
 pub struct ParseContext<'parse> {
     source: &'parse str,
     foremost_error: Option<ParseError>,
@@ -36,6 +81,17 @@ impl<'parse> ParseContext<'parse> {
         self.source
     }
 
+    /// Extract the error. Use this only after receiving `Reported` from an
+    /// operation on the context.
+    ///
+    /// # Panics
+    ///
+    /// If no error has been reported on this context.
+    pub fn into_reported_error(self) -> ParseError {
+        self.foremost_error
+            .expect("a parse error should have been reported")
+    }
+
     /// Record an error.
     ///
     /// Currently a ParseContext only tracks the foremost error. That is, if
@@ -48,15 +104,15 @@ impl<'parse> ParseContext<'parse> {
     /// different error messages. Generally the error we want is the one where
     /// we progressed as far as possible through the input string before
     /// failing.
-    pub fn report(&mut self, err: ParseError) -> ParseError {
+    pub fn report(&mut self, err: ParseError) -> Reported {
         if Some(err.location) > self.foremost_error.as_ref().map(|err| err.location) {
-            self.foremost_error = Some(err.clone());
+            self.foremost_error = Some(err);
         }
-        err
+        Reported
     }
 
     /// Record a `foo expected` error.
-    pub fn error_expected(&mut self, start: usize, expected: &str) -> ParseError {
+    pub fn error_expected(&mut self, start: usize, expected: &str) -> Reported {
         self.report(ParseError::new_expected(self.source(), start, expected))
     }
 
@@ -67,7 +123,7 @@ impl<'parse> ParseContext<'parse> {
         end: usize,
         type_name: &'static str,
         message: String,
-    ) -> ParseError {
+    ) -> Reported {
         self.report(ParseError::new_from_str_failed(
             self.source(),
             start,
@@ -78,7 +134,7 @@ impl<'parse> ParseContext<'parse> {
     }
 
     /// Record an "extra unparsed text after match" error.
-    pub fn error_extra(&mut self, location: usize) -> ParseError {
+    pub fn error_extra(&mut self, location: usize) -> Reported {
         self.report(ParseError::new_extra(self.source(), location))
     }
 }

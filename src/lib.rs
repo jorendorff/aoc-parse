@@ -354,7 +354,7 @@ mod traits;
 mod types;
 mod util;
 
-pub use context::ParseContext;
+pub use context::{ParseContext, Reported};
 pub use error::ParseError;
 use error::Result;
 pub use traits::{ParseIter, Parser};

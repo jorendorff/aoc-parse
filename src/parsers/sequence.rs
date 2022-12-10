@@ -2,7 +2,7 @@
 
 use crate::{
     types::{ParserOutput, RawOutputConcat},
-    ParseContext, ParseError, ParseIter, Parser, Result,
+    ParseContext, ParseIter, Parser, Reported, Result,
 };
 
 #[derive(Clone, Copy)]
@@ -39,7 +39,7 @@ where
         &'parse self,
         context: &mut ParseContext<'parse>,
         start: usize,
-    ) -> Result<Self::Iter<'parse>> {
+    ) -> Result<Self::Iter<'parse>, Reported> {
         let mut head_iter = self.head.parse_iter(context, start)?;
         let tail_iter = first_tail_match::<Head, Tail>(context, &mut head_iter, &self.tail)?;
         Ok(SequenceParseIter {
@@ -54,23 +54,18 @@ fn first_tail_match<'parse, Head, Tail>(
     context: &mut ParseContext<'parse>,
     head: &mut Head::Iter<'parse>,
     tail: &'parse Tail,
-) -> Result<Tail::Iter<'parse>>
+) -> Result<Tail::Iter<'parse>, Reported>
 where
     Head: Parser,
     Tail: Parser,
 {
-    let mut any_err: ParseError;
     loop {
         let mid = head.match_end();
-        match tail.parse_iter(context, mid) {
-            Ok(tail_iter) => return Ok(tail_iter),
-            Err(err) => any_err = err,
+        if let Ok(tail_iter) = tail.parse_iter(context, mid) {
+            return Ok(tail_iter);
         }
-        if !head.backtrack(context) {
-            break;
-        }
+        head.backtrack(context)?;
     }
-    Err(any_err)
 }
 
 impl<'parse, Head, Tail> ParseIter<'parse> for SequenceParseIter<'parse, Head, Tail>
@@ -85,23 +80,14 @@ where
         self.tail_iter.match_end()
     }
 
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
-        if self.tail_iter.backtrack(context) {
-            return true;
-        }
-        if !self.head_iter.backtrack(context) {
-            return false;
-        }
-        match first_tail_match::<Head, Tail>(context, &mut self.head_iter, &self.parsers.tail) {
-            Ok(tail_iter) => {
-                self.tail_iter = tail_iter;
-                true
-            }
-            Err(_err) => {
-                // todo: deal with _err
-                false
-            }
-        }
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        self.tail_iter.backtrack(context).or_else(|Reported| {
+            self.head_iter.backtrack(context)?;
+            let tail_iter =
+                first_tail_match::<Head, Tail>(context, &mut self.head_iter, &self.parsers.tail)?;
+            self.tail_iter = tail_iter;
+            Ok(())
+        })
     }
 
     fn into_raw_output(self) -> Self::RawOutput {
