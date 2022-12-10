@@ -343,6 +343,7 @@
 
 #![deny(missing_docs)]
 
+mod context;
 mod error;
 #[doc(hidden)]
 pub mod macros;
@@ -353,9 +354,10 @@ mod traits;
 mod types;
 mod util;
 
+pub use context::ParseContext;
 pub use error::ParseError;
 use error::Result;
-pub use traits::{ParseContext, ParseIter, Parser};
+pub use traits::{ParseIter, Parser};
 
 /// A giant sack of toys and goodies to import along with `Parser`.
 ///
