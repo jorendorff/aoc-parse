@@ -139,8 +139,9 @@ where
         R::check_at_start(context, start)?;
         let (inner_end, outer_end) = R::find_end(context, start)?;
 
-        let iter = match_fully::<R, P>(&self.parser, &context.source()[start..inner_end])
-            .map_err(|err| context.report(err.adjust_location(start)))?;
+        let source = context.source();
+        let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
+            .map_err(|err| context.report(err.adjust_location(source, start)))?;
 
         Ok(RegionParseIter { iter, outer_end })
     }
