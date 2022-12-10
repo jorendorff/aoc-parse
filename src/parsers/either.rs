@@ -1,6 +1,6 @@
 //! Alternation.
 
-use crate::{error::Result, parsers::MapParser, types::ParserOutput, ParseIter, Parser};
+use crate::{parsers::MapParser, types::ParserOutput, ParseContext, ParseIter, Parser, Result};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Either<A, B> {
@@ -19,7 +19,6 @@ where
     A: Parser + 'parse,
     B: Parser + 'parse,
 {
-    source: &'parse str,
     start: usize,
     parsers: &'parse EitherParser<A, B>,
     iter: Either<A::Iter<'parse>, B::Iter<'parse>>,
@@ -39,12 +38,12 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        let iter = match self.left.parse_iter(source, start) {
+        let iter = match self.left.parse_iter(context, start) {
             Ok(iter) => Either::Left(iter),
-            Err(left_err) => match self.right.parse_iter(source, start) {
+            Err(left_err) => match self.right.parse_iter(context, start) {
                 Ok(iter) => Either::Right(iter),
                 Err(right_err) => {
                     return Err(left_err.max_location(right_err));
@@ -52,7 +51,6 @@ where
             },
         };
         Ok(EitherParseIter {
-            source,
             start,
             parsers: self,
             iter,
@@ -60,7 +58,7 @@ where
     }
 }
 
-impl<'parse, A, B> ParseIter for EitherParseIter<'parse, A, B>
+impl<'parse, A, B> ParseIter<'parse> for EitherParseIter<'parse, A, B>
 where
     A: Parser,
     B: Parser,
@@ -74,24 +72,21 @@ where
         }
     }
 
-    fn backtrack(&mut self) -> bool {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
         match &mut self.iter {
             Either::Left(iter) => {
-                if iter.backtrack() {
+                if iter.backtrack(context) {
                     return true;
                 }
-                match self.parsers.right.parse_iter(self.source, self.start) {
+                match self.parsers.right.parse_iter(context, self.start) {
                     Ok(iter) => {
                         self.iter = Either::Right(iter);
                         true
                     }
-                    Err(_err) => {
-                        // TODO report _err
-                        false
-                    }
+                    Err(_err) => false,
                 }
             }
-            Either::Right(iter) => iter.backtrack(),
+            Either::Right(iter) => iter.backtrack(context),
         }
     }
 

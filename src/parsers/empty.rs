@@ -1,6 +1,6 @@
 //! Parser that successfully matches the empty string.
 
-use crate::{error::Result, ParseIter, Parser};
+use crate::{ParseContext, ParseIter, Parser, Result};
 
 #[derive(Clone, Copy)]
 pub struct EmptyParser;
@@ -10,7 +10,11 @@ impl Parser for EmptyParser {
     type RawOutput = ();
     type Iter<'parse> = EmptyParseIter;
 
-    fn parse_iter(&self, _source: &str, start: usize) -> Result<EmptyParseIter> {
+    fn parse_iter<'parse>(
+        &self,
+        _context: &mut ParseContext<'parse>,
+        start: usize,
+    ) -> Result<EmptyParseIter> {
         Ok(EmptyParseIter { location: start })
     }
 }
@@ -19,12 +23,12 @@ pub struct EmptyParseIter {
     location: usize,
 }
 
-impl ParseIter for EmptyParseIter {
+impl<'parse> ParseIter<'parse> for EmptyParseIter {
     type RawOutput = ();
     fn match_end(&self) -> usize {
         self.location
     }
-    fn backtrack(&mut self) -> bool {
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
         false
     }
     fn into_raw_output(self) -> Self::RawOutput {}

@@ -3,10 +3,9 @@
 use std::marker::PhantomData;
 
 use crate::{
-    error::Result,
     parsers::{star, EmptyParser, RepeatParser},
     types::ParserOutput,
-    ParseError, ParseIter, Parser,
+    ParseContext, ParseError, ParseIter, Parser, Result,
 };
 
 /// This is implemented for `Line` and `Section`, the two region types.
@@ -96,7 +95,8 @@ where
     R: Region,
     P: Parser,
 {
-    let mut iter = parser.parse_iter(source, 0)?;
+    let mut context = ParseContext::new(source);
+    let mut iter = parser.parse_iter(&mut context, 0)?;
     let mut farthest = 0;
     loop {
         let end = iter.match_end();
@@ -104,7 +104,7 @@ where
             return Ok(iter);
         }
         farthest = farthest.max(end);
-        if !iter.backtrack() {
+        if !iter.backtrack(&mut context) {
             return Err(R::extra_err(source, farthest));
         }
     }
@@ -130,21 +130,22 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
+        let source = context.source();
         if !R::is_at_start(source, start) {
             return Err(R::not_at_start_err(source, start));
         }
         let (inner_end, outer_end) = match R::find_end(source, start) {
             Some(pair) => pair,
             None => {
-                return Err(ParseError::new_expected(source, source.len(), "\n"));
+                return Err(context.error_expected(source.len(), "\n"));
             }
         };
 
         let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
-            .map_err(|err| err.adjust_location(start))?;
+            .map_err(|err| context.report(err.adjust_location(start)))?;
 
         Ok(RegionParseIter { iter, outer_end })
     }
@@ -158,7 +159,7 @@ where
     outer_end: usize,
 }
 
-impl<'parse, P> ParseIter for RegionParseIter<'parse, P>
+impl<'parse, P> ParseIter<'parse> for RegionParseIter<'parse, P>
 where
     P: Parser,
 {
@@ -168,7 +169,7 @@ where
         self.outer_end
     }
 
-    fn backtrack(&mut self) -> bool {
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
         false
     }
 

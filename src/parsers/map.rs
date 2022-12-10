@@ -1,6 +1,6 @@
 //! Mapping parsers.
 
-use crate::{error::Result, types::ParserOutput, ParseIter, Parser};
+use crate::{types::ParserOutput, ParseContext, ParseIter, Parser, Result};
 
 pub struct MapRawParser<P, F> {
     parser: P,
@@ -30,16 +30,16 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        let iter = self.parser.parse_iter(source, start)?;
+        let iter = self.parser.parse_iter(context, start)?;
         let mapper = &self.mapper;
         Ok(MapRawParseIter { iter, mapper })
     }
 }
 
-impl<'parse, P, F, T> ParseIter for MapRawParseIter<'parse, P, F>
+impl<'parse, P, F, T> ParseIter<'parse> for MapRawParseIter<'parse, P, F>
 where
     P: Parser,
     F: Fn(P::RawOutput) -> T,
@@ -50,8 +50,8 @@ where
         self.iter.match_end()
     }
 
-    fn backtrack(&mut self) -> bool {
-        self.iter.backtrack()
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+        self.iter.backtrack(context)
     }
 
     fn into_raw_output(self) -> T {
@@ -93,16 +93,16 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        let iter = self.parser.parse_iter(source, start)?;
+        let iter = self.parser.parse_iter(context, start)?;
         let mapper = &self.mapper;
         Ok(MapParseIter { iter, mapper })
     }
 }
 
-impl<'parse, P, F, T> ParseIter for MapParseIter<'parse, P, F>
+impl<'parse, P, F, T> ParseIter<'parse> for MapParseIter<'parse, P, F>
 where
     P: Parser,
     F: Fn(P::Output) -> T,
@@ -113,8 +113,8 @@ where
         self.iter.match_end()
     }
 
-    fn backtrack(&mut self) -> bool {
-        self.iter.backtrack()
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+        self.iter.backtrack(context)
     }
 
     fn into_raw_output(self) -> (T,) {

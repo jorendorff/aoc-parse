@@ -1,10 +1,9 @@
 //! Parsing a repeated pattern.
 
 use crate::{
-    error::Result,
     parsers::{empty, EmptyParser},
     types::ParserOutput,
-    ParseError, ParseIter, Parser,
+    ParseContext, ParseIter, Parser, Result,
 };
 
 #[derive(Clone, Copy)]
@@ -22,7 +21,6 @@ where
     Sep: Parser + 'parse,
 {
     params: &'parse RepeatParser<Pattern, Sep>,
-    source: &'parse str,
     start: usize,
     pattern_iters: Vec<Pattern::Iter<'parse>>,
     sep_iters: Vec<Sep::Iter<'parse>>,
@@ -42,18 +40,17 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
         let mut iter = RepeatParseIter {
             params: self,
-            source,
             start,
             pattern_iters: vec![],
             sep_iters: vec![],
         };
-        if !iter.next(Mode::Advance) {
-            return Err(ParseError::new_extra(source, iter.end()));
+        if !iter.next(context, Mode::Advance) {
+            return Err(context.error_extra(iter.end()));
         }
         Ok(iter)
     }
@@ -107,7 +104,7 @@ where
 
     /// Precondition: Either there are no iters or we just successfully
     /// backtracked the foremost iter.
-    fn advance(&mut self) -> Result<()> {
+    fn advance(&mut self, context: &mut ParseContext<'parse>) -> Result<()> {
         // TODO: When considering creating a new iterator, if we have already
         // matched `max` times, don't bother; no matches can come of it.
         let mut advanced = false;
@@ -117,7 +114,7 @@ where
 
             if self.is_pattern_next() {
                 let start = self.end();
-                match self.params.pattern.parse_iter(self.source, start) {
+                match self.params.pattern.parse_iter(context, start) {
                     Err(err) => {
                         if !advanced {
                             return Err(err);
@@ -133,7 +130,7 @@ where
             }
 
             let start = self.end();
-            match self.params.sep.parse_iter(self.source, start) {
+            match self.params.sep.parse_iter(context, start) {
                 Err(err) => {
                     if !advanced {
                         return Err(err);
@@ -149,7 +146,7 @@ where
         }
     }
 
-    fn next(&mut self, mut mode: Mode) -> bool {
+    fn next(&mut self, context: &mut ParseContext<'parse>, mut mode: Mode) -> bool {
         loop {
             match mode {
                 Mode::BacktrackTopIter => {
@@ -163,9 +160,9 @@ where
                         return false;
                     }
                     let ok = if !self.is_pattern_next() {
-                        self.pattern_iters.last_mut().unwrap().backtrack()
+                        self.pattern_iters.last_mut().unwrap().backtrack(context)
                     } else {
-                        self.sep_iters.last_mut().unwrap().backtrack()
+                        self.sep_iters.last_mut().unwrap().backtrack(context)
                     };
 
                     mode = if ok {
@@ -181,7 +178,7 @@ where
                 Mode::Advance => {
                     // Scan forward, hoping to find matches and create new
                     // iterators.
-                    let _ = self.advance();
+                    let _ = self.advance(context);
                     mode = Mode::YieldThenBacktrack;
                 }
                 Mode::Exhausted => {
@@ -217,7 +214,7 @@ where
     }
 }
 
-impl<'parse, Pattern, Sep> ParseIter for RepeatParseIter<'parse, Pattern, Sep>
+impl<'parse, Pattern, Sep> ParseIter<'parse> for RepeatParseIter<'parse, Pattern, Sep>
 where
     Pattern: Parser,
     Sep: Parser,
@@ -228,8 +225,8 @@ where
         self.end()
     }
 
-    fn backtrack(&mut self) -> bool {
-        self.next(Mode::BacktrackTopIter)
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+        self.next(context, Mode::BacktrackTopIter)
     }
 
     fn into_raw_output(self) -> (Vec<Pattern::Output>,) {

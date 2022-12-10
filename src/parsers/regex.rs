@@ -7,7 +7,7 @@ use std::{
 
 use regex::Regex;
 
-use crate::{error::Result, ParseError, ParseIter, Parser};
+use crate::{ParseContext, ParseIter, Parser, Result};
 
 pub struct RegexParser<T, E> {
     pub(crate) regex: fn() -> &'static Regex,
@@ -44,22 +44,17 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        match (self.regex)().find(&source[start..]) {
-            None => Err(ParseError::new_expected(
-                source,
-                start,
-                any::type_name::<T>(),
-            )),
+        match (self.regex)().find(&context.source()[start..]) {
+            None => Err(context.error_expected(start, any::type_name::<T>())),
             Some(m) => match (self.parse_fn)(m.as_str()) {
                 Ok(value) => Ok(RegexParseIter {
                     end: start + m.end(),
                     value,
                 }),
-                Err(err) => Err(ParseError::new_from_str_failed(
-                    source,
+                Err(err) => Err(context.error_from_str_failed(
                     start,
                     start + m.end(),
                     any::type_name::<T>(),
@@ -70,12 +65,12 @@ where
     }
 }
 
-impl<T> ParseIter for RegexParseIter<T> {
+impl<'parse, T> ParseIter<'parse> for RegexParseIter<T> {
     type RawOutput = (T,);
     fn match_end(&self) -> usize {
         self.end
     }
-    fn backtrack(&mut self) -> bool {
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> bool {
         false
     }
     fn into_raw_output(self) -> (T,) {

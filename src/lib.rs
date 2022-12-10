@@ -355,7 +355,7 @@ mod util;
 
 pub use error::ParseError;
 use error::Result;
-pub use traits::{ParseIter, Parser};
+pub use traits::{ParseContext, ParseIter, Parser};
 
 /// A giant sack of toys and goodies to import along with `Parser`.
 ///

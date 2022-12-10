@@ -1,9 +1,8 @@
 //! Matching patterns in sequence.
 
 use crate::{
-    error::Result,
     types::{ParserOutput, RawOutputConcat},
-    ParseError, ParseIter, Parser,
+    ParseContext, ParseError, ParseIter, Parser, Result,
 };
 
 #[derive(Clone, Copy)]
@@ -18,7 +17,6 @@ where
     Tail: Parser + 'parse,
 {
     parsers: &'parse SequenceParser<Head, Tail>,
-    source: &'parse str,
     head_iter: Head::Iter<'parse>,
     tail_iter: Tail::Iter<'parse>,
 }
@@ -39,14 +37,13 @@ where
 
     fn parse_iter<'parse>(
         &'parse self,
-        source: &'parse str,
+        context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>> {
-        let mut head_iter = self.head.parse_iter(source, start)?;
-        let tail_iter = first_tail_match::<Head, Tail>(source, &mut head_iter, &self.tail)?;
+        let mut head_iter = self.head.parse_iter(context, start)?;
+        let tail_iter = first_tail_match::<Head, Tail>(context, &mut head_iter, &self.tail)?;
         Ok(SequenceParseIter {
             parsers: self,
-            source,
             head_iter,
             tail_iter,
         })
@@ -54,7 +51,7 @@ where
 }
 
 fn first_tail_match<'parse, Head, Tail>(
-    source: &'parse str,
+    context: &mut ParseContext<'parse>,
     head: &mut Head::Iter<'parse>,
     tail: &'parse Tail,
 ) -> Result<Tail::Iter<'parse>>
@@ -62,23 +59,21 @@ where
     Head: Parser,
     Tail: Parser,
 {
-    let mut foremost_error: Option<ParseError> = None;
+    let mut any_err: ParseError;
     loop {
         let mid = head.match_end();
-        match tail.parse_iter(source, mid) {
+        match tail.parse_iter(context, mid) {
             Ok(tail_iter) => return Ok(tail_iter),
-            Err(err) => {
-                ParseError::keep_best(&mut foremost_error, err);
-            }
+            Err(err) => any_err = err,
         }
-        if !head.backtrack() {
+        if !head.backtrack(context) {
             break;
         }
     }
-    Err(foremost_error.unwrap())
+    Err(any_err)
 }
 
-impl<'parse, Head, Tail> ParseIter for SequenceParseIter<'parse, Head, Tail>
+impl<'parse, Head, Tail> ParseIter<'parse> for SequenceParseIter<'parse, Head, Tail>
 where
     Head: Parser,
     Tail: Parser,
@@ -90,14 +85,14 @@ where
         self.tail_iter.match_end()
     }
 
-    fn backtrack(&mut self) -> bool {
-        if self.tail_iter.backtrack() {
+    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> bool {
+        if self.tail_iter.backtrack(context) {
             return true;
         }
-        if !self.head_iter.backtrack() {
+        if !self.head_iter.backtrack(context) {
             return false;
         }
-        match first_tail_match::<Head, Tail>(self.source, &mut self.head_iter, &self.parsers.tail) {
+        match first_tail_match::<Head, Tail>(context, &mut self.head_iter, &self.parsers.tail) {
             Ok(tail_iter) => {
                 self.tail_iter = tail_iter;
                 true
