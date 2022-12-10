@@ -1,5 +1,27 @@
 use thiserror::Error;
 
+#[derive(Clone, Debug, Error)]
+enum ParseErrorReason {
+    #[error("extra unparsed text after match")]
+    Extra,
+    #[error("line() can't match here because this is not at the start of a line")]
+    NotAtLineStart,
+    #[error("section() can't match here because this is not at the start of a section")]
+    NotAtSectionStart,
+    #[error("line(pattern) matched part of the line, but not all of it")]
+    LineExtra,
+    #[error("section(pattern) matched part of the section, but not all of it")]
+    SectionExtra,
+    #[error("expected {0:?}")]
+    Expected(String),
+    #[error("failed to parse {input:?} as type {type_name}: {message}")]
+    FromStrFailed {
+        input: String,
+        type_name: &'static str,
+        message: String,
+    },
+}
+
 /// An error happened while trying to parse puzzle input or convert the matched
 /// characters to a Rust value.
 #[derive(Clone)]
@@ -49,28 +71,6 @@ impl std::fmt::Debug for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-
-#[derive(Clone, Debug, Error)]
-enum ParseErrorReason {
-    #[error("extra unparsed text after match")]
-    Extra,
-    #[error("line() can't match here because this is not at the start of a line")]
-    NotAtLineStart,
-    #[error("section() can't match here because this is not at the start of a section")]
-    NotAtSectionStart,
-    #[error("line(pattern) matched part of the line, but not all of it")]
-    LineExtra,
-    #[error("section(pattern) matched part of the section, but not all of it")]
-    SectionExtra,
-    #[error("expected {0:?}")]
-    Expected(String),
-    #[error("failed to parse {input:?} as type {type_name}: {message}")]
-    FromStrFailed {
-        input: String,
-        type_name: &'static str,
-        message: String,
-    },
-}
 
 impl ParseError {
     fn new(source: &str, location: usize, reason: ParseErrorReason) -> Self {
