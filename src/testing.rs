@@ -8,9 +8,9 @@ pub use crate::parsers::{alt, empty, opt, plus, sequence, star};
 pub use crate::{ParseError, ParseIter, Parser};
 
 #[track_caller]
-pub(crate) fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
+pub(crate) fn assert_parse_eq<P, E>(parser: P, s: &str, expected: E)
 where
-    P: Parser + ?Sized,
+    P: Parser,
     P::Output: PartialEq<E> + Debug,
     E: Debug,
 {
@@ -21,9 +21,9 @@ where
 }
 
 #[track_caller]
-pub(crate) fn assert_no_parse<P>(parser: &P, s: &str)
+pub(crate) fn assert_no_parse<P>(parser: P, s: &str)
 where
-    P: Parser + ?Sized,
+    P: Parser,
     P::Output: Debug,
 {
     if let Ok(m) = parser.parse(s) {
@@ -32,7 +32,7 @@ where
 }
 
 #[track_caller]
-pub(crate) fn assert_parse_error<P>(parser: &P, s: &str, expected_message: &str)
+pub(crate) fn assert_parse_error<P>(parser: P, s: &str, expected_message: &str)
 where
     P: Parser,
     P::Output: Debug,

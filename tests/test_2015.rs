@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use aoc_parse::{parser, prelude::*};
 
 #[track_caller]
-fn assert_parse_eq<P, E>(parser: &P, s: &str, expected: E)
+fn assert_parse_eq<P, E>(parser: P, s: &str, expected: E)
 where
     P: Parser,
     P::Output: PartialEq<E> + Debug,
@@ -16,19 +16,19 @@ where
 }
 
 #[test]
-fn day01() {
+fn day1() {
     let p = parser!(line({"(" => 1i32, ")" => -1}*));
-    assert_parse_eq(&p, ")())())\n", vec![-1i32, 1, -1, -1, 1, -1, -1]);
+    assert_parse_eq(p, ")())())\n", vec![-1i32, 1, -1, -1, 1, -1, -1]);
 }
 
 #[test]
-fn day02() {
+fn day2() {
     let p = parser!(lines(u64 "x" u64 "x" u64));
-    assert_parse_eq(&p, "4x23x21\n22x29x19\n", vec![(4, 23, 21), (22, 29, 19)]);
+    assert_parse_eq(p, "4x23x21\n22x29x19\n", vec![(4, 23, 21), (22, 29, 19)]);
 }
 
 #[test]
-fn day03() {
+fn day3() {
     let p = parser!(line({
         "^" => (0, -1),
         "<" => (-1, 0),
@@ -36,40 +36,40 @@ fn day03() {
         ">" => (1, 0),
     }*));
 
-    assert_parse_eq(&p, "^>v<\n", vec![(0, -1), (1, 0), (0, 1), (-1, 0)]);
+    assert_parse_eq(p, "^>v<\n", vec![(0, -1), (1, 0), (0, 1), (-1, 0)]);
 }
 
 #[test]
-fn day04() {
+fn day4() {
     let p = parser!(line(lower+));
-    assert_parse_eq(&p, "xyzzy\n", vec!['x', 'y', 'z', 'z', 'y']);
+    assert_parse_eq(p, "xyzzy\n", vec!['x', 'y', 'z', 'z', 'y']);
 }
 
 #[test]
-fn day05() {
+fn day5() {
     let p = parser!(lines(string(lower+)));
     assert_parse_eq(
-        &p,
+        p,
         "ugknbfddg\njchzalr\nhaegwjz\ndvszwmarr\n",
         vec!["ugknbfddg", "jchzalr", "haegwjz", "dvszwmarr"],
     );
 }
 
 #[test]
-fn day06() {
+fn day6() {
     let p = parser!(lines(
         "turn " {"on" => true, "off" => false} " "
             u32 "," u32 " through " u32 "," u32
     ));
     assert_parse_eq(
-        &p,
+        p,
         "turn on 489,959 through 759,964\nturn off 820,516 through 871,914\nturn off 427,423 through 929,502\n",
         vec![(true, 489, 959, 759, 964), (false, 820, 516, 871, 914), (false, 427, 423, 929, 502)],
     );
 }
 
 #[test]
-fn day07() {
+fn day7() {
     type Reg = String;
 
     #[derive(Debug, PartialEq)]
@@ -100,7 +100,7 @@ fn day07() {
     }));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 lf AND lq -> ls
 iu RSHIFT 1 -> jn
@@ -117,7 +117,7 @@ NOT el -> em
 }
 
 #[test]
-fn day08() {
+fn day8() {
     let p = parser!(lines(
         "\"" ({
             lower,
@@ -134,7 +134,7 @@ fn day08() {
 "#;
 
     assert_parse_eq(
-        &p,
+        p,
         example,
         vec![
             vec!['n', '\\', 'c'],
@@ -145,13 +145,13 @@ fn day08() {
 }
 
 #[test]
-fn day09() {
+fn day9() {
     let p = parser!(lines(
         string(alpha+) " to " string(alpha+) " = " usize
     ));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 Tristram to Faerun = 108
 AlphaCentauri to Snowdin = 4
@@ -170,13 +170,13 @@ Straylight to Arbre = 127
 #[test]
 fn day10() {
     let p = parser!(digit+);
-    assert_parse_eq(&p, "1113222113", vec![1, 1, 1, 3, 2, 2, 2, 1, 1, 3]);
+    assert_parse_eq(p, "1113222113", vec![1, 1, 1, 3, 2, 2, 2, 1, 1, 3]);
 }
 
 #[test]
 fn day11() {
     let p = parser!(alpha+);
-    assert_parse_eq(&p, "hxbxwxba", vec!['h', 'x', 'b', 'x', 'w', 'x', 'b', 'a']);
+    assert_parse_eq(p, "hxbxwxba", vec!['h', 'x', 'b', 'x', 'w', 'x', 'b', 'a']);
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn day13() {
         ));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 Alice would gain 54 happiness units by sitting next to Bob.
 Bob would gain 83 happiness units by sitting next to Alice.
@@ -209,7 +209,7 @@ fn day14() {
     ));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 Vixen can fly 8 km/s for 8 seconds, but then must rest for 53 seconds.
 Blitzen can fly 13 km/s for 4 seconds, but then must rest for 49 seconds.
@@ -233,7 +233,7 @@ fn day15() {
     ));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 Sprinkles: capacity 5, durability -1, flavor 0, texture 0, calories 5
 PeanutButter: capacity -1, durability 3, flavor 0, texture 0, calories 1
@@ -256,7 +256,7 @@ fn day16() {
     ));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 Sue 1: goldfish: 6, trees: 9, akitas: 0
 Sue 2: goldfish: 7, trees: 1, akitas: 0
@@ -294,14 +294,14 @@ Sue 500: perfumes: 4, cars: 9, trees: 4
 #[test]
 fn day17() {
     let p = parser!(lines(u32));
-    assert_parse_eq(&p, "50\n44\n11\n49\n7\n18\n", vec![50, 44, 11, 49, 7, 18]);
+    assert_parse_eq(p, "50\n44\n11\n49\n7\n18\n", vec![50, 44, 11, 49, 7, 18]);
 }
 
 #[test]
 fn day18() {
     let p = parser!(lines({"." => false, "#" => true}+));
     assert_parse_eq(
-        &p,
+        p,
         "\
 .#.#.#
 ...##.
@@ -324,7 +324,7 @@ fn day19() {
         section(line(alpha+))
     );
     assert_parse_eq(
-        &p,
+        p,
         "\
 Ca => SiRnFYFAr
 F => CaF
@@ -363,7 +363,7 @@ fn day21() {
         line("Armor: " u32)
     );
     assert_parse_eq(
-        &p,
+        p,
         "\
 Hit Points: 104
 Damage: 8
@@ -380,7 +380,7 @@ fn day22() {
         line("Damage: " u32)
     );
     assert_parse_eq(
-        &p,
+        p,
         "\
 Hit Points: 55
 Damage: 8
@@ -420,7 +420,7 @@ fn day23() {
     }));
 
     assert_parse_eq(
-        &p,
+        p,
         "\
 inc a
 jio a, +2

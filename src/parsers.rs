@@ -78,54 +78,54 @@ mod tests {
     #[test]
     fn test_parse() {
         let p = empty();
-        assert_parse_eq(&p, "", ());
-        assert_no_parse(&p, "x");
+        assert_parse_eq(p, "", ());
+        assert_no_parse(p, "x");
 
         let p = "ok";
-        assert_parse_eq(&p, "ok", ());
-        assert_no_parse(&p, "");
-        assert_no_parse(&p, "o");
-        assert_no_parse(&p, "nok");
+        assert_parse_eq(p, "ok", ());
+        assert_no_parse(p, "");
+        assert_no_parse(p, "o");
+        assert_no_parse(p, "nok");
 
         let p = sequence("ok", "go");
-        assert_parse_eq(&p, "okgo", ());
-        assert_no_parse(&p, "ok");
-        assert_no_parse(&p, "go");
-        assert_no_parse(&p, "");
+        assert_parse_eq(p, "okgo", ());
+        assert_no_parse(p, "ok");
+        assert_no_parse(p, "go");
+        assert_no_parse(p, "");
 
         let p = either(empty(), "ok");
-        assert_parse_eq(&p, "", Either::Left(()));
-        assert_parse_eq(&p, "ok", Either::Right(()));
-        assert_no_parse(&p, "okc");
-        assert_no_parse(&p, "okok");
+        assert_parse_eq(p, "", Either::Left(()));
+        assert_parse_eq(p, "ok", Either::Right(()));
+        assert_no_parse(p, "okc");
+        assert_no_parse(p, "okok");
 
         let p = star("a");
-        assert_parse_eq(&p, "", vec![]);
-        assert_parse_eq(&p, "a", vec![()]);
-        assert_parse_eq(&p, "aa", vec![(), ()]);
-        assert_parse_eq(&p, "aaa", vec![(), (), ()]);
-        assert_no_parse(&p, "b");
-        assert_no_parse(&p, "ab");
-        assert_no_parse(&p, "ba");
+        assert_parse_eq(p, "", vec![]);
+        assert_parse_eq(p, "a", vec![()]);
+        assert_parse_eq(p, "aa", vec![(), ()]);
+        assert_parse_eq(p, "aaa", vec![(), (), ()]);
+        assert_no_parse(p, "b");
+        assert_no_parse(p, "ab");
+        assert_no_parse(p, "ba");
 
         let p = repeat_sep("cow", ",");
-        assert_parse_eq(&p, "", vec![]);
-        assert_parse_eq(&p, "cow", vec![()]);
-        assert_parse_eq(&p, "cow,cow", vec![(), ()]);
-        assert_parse_eq(&p, "cow,cow,cow", vec![(), (), ()]);
-        assert_no_parse(&p, "cowcow");
-        assert_no_parse(&p, "cow,");
-        assert_no_parse(&p, "cow,,cow");
-        assert_no_parse(&p, "cow,cow,");
-        assert_no_parse(&p, ",");
+        assert_parse_eq(p, "", vec![]);
+        assert_parse_eq(p, "cow", vec![()]);
+        assert_parse_eq(p, "cow,cow", vec![(), ()]);
+        assert_parse_eq(p, "cow,cow,cow", vec![(), (), ()]);
+        assert_no_parse(p, "cowcow");
+        assert_no_parse(p, "cow,");
+        assert_no_parse(p, "cow,,cow");
+        assert_no_parse(p, "cow,cow,");
+        assert_no_parse(p, ",");
 
         let p = plus("a");
-        assert_no_parse(&p, "");
-        assert_parse_eq(&p, "a", vec![()]);
-        assert_parse_eq(&p, "aa", vec![(), ()]);
+        assert_no_parse(p, "");
+        assert_parse_eq(p, "a", vec![()]);
+        assert_parse_eq(p, "aa", vec![(), ()]);
 
         let p = repeat_sep(usize, ",");
-        assert_parse_eq(&p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
+        assert_parse_eq(p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
 
         assert_no_parse(&u8, "256");
 
