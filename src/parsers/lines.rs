@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// This is implemented for `Line` and `Section`, the two region types.
-pub trait Region {
+pub trait Region: Copy + Clone {
     /// True if `start` is an offset within `source` that's the start of this
     /// type of region. Caller promises that `start` is at least in bounds and
     /// a character boundary in `source`.
@@ -30,6 +30,7 @@ pub trait Region {
 /// A line is a sequence of zero or more non-newline characters, starting
 /// either at the beginning of the input or immediately after a newline;
 /// followed by a single newline.
+#[derive(Debug, Clone, Copy)]
 pub struct Line;
 
 impl Region for Line {
@@ -58,6 +59,7 @@ impl Region for Line {
 /// A "section" is a sequence of zero or more nonblank lines, starting either
 /// at the beginning of the input or immediately after a newline; followed by
 /// either a blank line or the end of input.
+#[derive(Debug, Clone, Copy)]
 pub struct Section;
 
 impl Region for Section {
