@@ -41,11 +41,10 @@ macro_rules! parser {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! aoc_parse_helper {
-    // aoc_parse_helper!(@seq label [expr] [stack] [patterns])
+    // aoc_parse_helper!(@seq [expr] [stack] [patterns])
     //
     // Submacro to transform a pattern matching `expr` to a Rust Parser
-    // expression; except if `expr` was labeled, the label must already have
-    // been stripped off and passed in as `label`.
+    // expression.
     //
     // Gradually parses the tokens in `expr`, producing `stack` (in reverse)
     // and `patterns` (in reverse for no good reason), then at the end converts
@@ -60,72 +59,60 @@ macro_rules! aoc_parse_helper {
     // doesn't reject some bad syntax like `foo?(x)` or `foo??` or `foo++`.
 
     // Mapper at the end of a pattern that is not labeled, `expr ::= label => rust_expr`.
-    (@seq _ [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
         $crate::Parser::map(
-            $crate::aoc_parse_helper!(@seq _ [] [ $($stack)* ] [ $($pats ,)* ]) ,
+            $crate::aoc_parse_helper!(@seq [] [ $($stack)* ] [ $($pats ,)* ]) ,
             | ( $crate::aoc_parse_helper!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
-        )
-    };
-
-    // Mapper at the end of a pattern that is labeled.
-    //
-    // Experimentally: In `(foo: t1 ", " t2 => f1(foo)) => f2(foo)` the pair is
-    // available as `foo` in the inner mapper. Then the result of the inner
-    // mapper is named `foo` in the outer mapper.
-    (@seq $label:ident [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
-        $crate::Parser::map(
-            $crate::aoc_parse_helper!(@seq $label [] [ $($stack)* ] [ $($pats ,)* ]) ,
-            | $label @ ( $crate::aoc_parse_helper!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
         )
     };
 
     // Recognize `as` keyword, not yet supported.
     //
     // By design of the syntax, `as` only happens at the end of input here.
-    (@seq $label:tt [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         todo!("cast syntax")
     };
 
     // Reject unsupported non-greedy regex syntax.
-    (@seq $label:tt [ * ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ * ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("non-greedy quantifier `*?` is not supported")
     };
 
     // Reject unsupported non-greedy regex syntax.
-    (@seq $label:tt [ + ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ + ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("non-greedy quantifier `+?` is not supported")
     };
 
     // Detect Kleene * and apply it to the preceding term.
-    (@seq $label:tt [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq $label [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
+    (@seq [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
     };
 
     // Detect Kleene + and apply it to the preceding term.
-    (@seq $label:tt [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq $label [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
+    (@seq [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
     };
 
     // Detect optional `?` and apply it to the preceding term.
-    (@seq $label:tt [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq $label [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ] [ _ , $($pats ,)* ])
+    (@seq [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ] [ _ , $($pats ,)* ])
     };
 
     // A quantifier at the beginning of input (nothing on the stack) is an errror.
-    (@seq $label:tt [ * $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+    (@seq [ * $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("quantifier `*` has to come after something, not at the start of an expression.")
     };
-    (@seq $label:tt [ + $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+    (@seq [ + $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("quantifier `+` has to come after something, not at the start of an expression.")
     };
-    (@seq $label:tt [ ? $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
+    (@seq [ ? $($tail:tt)* ] [ ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("quantifier `?` has to come after something, not at the start of an expression.")
     };
 
     // call syntax
-    (@seq $label:tt [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
-            @seq $label
+            @seq
             [ $($tail)* ]
             [
                 $crate::aoc_parse_helper!(@args ( $f ) [ $( $args )* ] [] ())
@@ -137,9 +124,9 @@ macro_rules! aoc_parse_helper {
     };
 
     // parenthesized subpattern with a label
-    (@seq $label:tt [ ( $sublabel:ident : $($expr:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ ( $sublabel:ident : $($expr:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
-            @seq $label
+            @seq
             [ $($tail)* ]
             [
                 $crate::aoc_parse_helper!(@prim ( $($expr)* )) ,
@@ -150,9 +137,9 @@ macro_rules! aoc_parse_helper {
     };
 
     // string literal
-    (@seq $label:tt [ $x:literal $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ $x:literal $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
-            @seq $label
+            @seq
             [ $($tail)* ]
             [
                 $crate::aoc_parse_helper!(@prim $x) ,
@@ -163,9 +150,9 @@ macro_rules! aoc_parse_helper {
     };
 
     // the first `tt` of any other `term`
-    (@seq $label:tt [ $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
-            @seq $label
+            @seq
             [ $($tail)* ]
             [
                 $crate::aoc_parse_helper!(@prim $x) ,
@@ -176,12 +163,12 @@ macro_rules! aoc_parse_helper {
     };
 
     // end of input
-    (@seq $label:tt [ ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(@reverse [ $($parts ,)* ] [])
     };
 
     // anything not matched by this point is an error
-    (@seq $label:tt [ $($tail:tt)* ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ $($tail:tt)* ] [ $($parts:expr ,)* ] [ $($pats:tt ,)* ]) => {
         core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
@@ -229,7 +216,7 @@ macro_rules! aoc_parse_helper {
     };
     (@prim ( $($nested:tt)* )) => {
         $crate::macros::parenthesize(
-            $crate::aoc_parse_helper!(@seq _ [ $( $nested )* ] [ ] [ ])
+            $crate::aoc_parse_helper!(@seq [ $( $nested )* ] [ ] [ ])
         )
     };
     (@prim { $($nested:tt)* }) => {
@@ -249,7 +236,7 @@ macro_rules! aoc_parse_helper {
             [ ]
             (
                 $( $arg , )*
-                $crate::aoc_parse_helper!(@seq _ [ $( $seq )* ] [ ] [ ]) ,
+                $crate::aoc_parse_helper!(@seq [ $( $seq )* ] [ ] [ ]) ,
             )
         )
     };
@@ -285,7 +272,7 @@ macro_rules! aoc_parse_helper {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $crate::aoc_parse_helper!(@seq _ [ $( $seq )* ] [ ] [ ]) ]
+            [ $crate::aoc_parse_helper!(@seq [ $( $seq )* ] [ ] [ ]) ]
         )
     };
 
@@ -295,7 +282,7 @@ macro_rules! aoc_parse_helper {
             @list
             [ $( $tail )* ]
             [ ]
-            [ $crate::macros::alt($out, $crate::aoc_parse_helper!(@seq _ [ $( $seq )* ] [ ] [ ])) ]
+            [ $crate::macros::alt($out, $crate::aoc_parse_helper!(@seq [ $( $seq )* ] [ ] [ ])) ]
         )
     };
 
@@ -333,7 +320,7 @@ macro_rules! aoc_parse_helper {
     // Hand anything else off to the @seq submacro.
     ($($tail:tt)*) => {
         $crate::macros::parenthesize(
-            $crate::aoc_parse_helper!(@seq _ [ $($tail)* ] [ ] [ ])
+            $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ ] [ ])
         )
     };
 }
