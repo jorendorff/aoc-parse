@@ -114,5 +114,3 @@ macro_rules! impl_tuple_concat {
 }
 
 impl_tuple_concat!([A B C D E F G H] ());
-
-// --- ParserOutput
