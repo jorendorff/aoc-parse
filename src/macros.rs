@@ -9,11 +9,8 @@ pub use crate::parsers::{alt, empty, lines, opt, parenthesize, plus, sequence, s
 /// ```text
 /// pattern ::= expr
 ///
-/// expr ::= label
-///   | label "=>" rust_expr    -- custom conversion
-///
-/// label ::= cast
-///   | ident ":" seq           -- labeled subpattern
+/// expr ::= seq
+///   | seq "=>" rust_expr      -- custom conversion
 ///
 /// seq ::= term
 ///   | seq term                -- concatenated subpatterns
@@ -24,6 +21,7 @@ pub use crate::parsers::{alt, empty, lines, opt, parenthesize, plus, sequence, s
 ///   | term "?"                -- optional
 ///
 /// prim ::= "(" expr ")"
+///   | "(" ident ":" expr ")"  -- labeled subpattern
 ///   | ident "(" expr,* ")"    -- function call
 ///   | ident                   -- named parser (when not followed by `(`)
 ///   | literal                 -- exact string
@@ -330,13 +328,6 @@ macro_rules! aoc_parse_helper {
     // aoc_parse_helper!(@...) - This is an internal error, shouldn't happen in the wild.
     (@ $($tail:tt)*) => {
         ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
-    };
-
-    // aoc_parse_helper!(ident : ...) - Labeled expression, `label ::= ident : cast`
-    ($label:ident : $($tail:tt)*) => {
-        $crate::macros::parenthesize(
-            $crate::aoc_parse_helper!(@seq $label [ $($tail)* ] [ ] [ ])
-        )
     };
 
     // Hand anything else off to the @seq submacro.

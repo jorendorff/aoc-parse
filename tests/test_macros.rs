@@ -91,7 +91,7 @@ fn test_lines_exact() {
 
 #[test]
 fn test_unused_labels() {
-    let p = parser!(_a: "ok" => "OK");
+    let p = parser!((_a: "ok") => "OK");
     assert_parse_eq(p, "ok", "OK");
 
     let p = parser!((_a: "hello") " " (_b: "world") => "!");
@@ -167,7 +167,7 @@ fn test_chars() {
 
     assert_parse_error(parser!('\n'), "q", r#"expected "\n" at"#);
 
-    let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
+    let p = parser!((a: alpha+) => a.into_iter().collect::<String>());
     assert_no_parse(p, "");
     assert_no_parse(p, " hello");
     assert_parse_eq(p, "hello", "hello");
