@@ -66,13 +66,6 @@ macro_rules! aoc_parse_helper {
         )
     };
 
-    // Recognize `as` keyword, not yet supported.
-    //
-    // By design of the syntax, `as` only happens at the end of input here.
-    (@seq [ as $ty:ty ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
-        todo!("cast syntax")
-    };
-
     // Reject unsupported non-greedy regex syntax.
     (@seq [ * ? $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         core::compile_error!("non-greedy quantifier `*?` is not supported")
