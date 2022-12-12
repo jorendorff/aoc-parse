@@ -106,17 +106,25 @@ fn test_unused_labels() {
 }
 
 #[test]
+fn test_repeat() {
+    let p = parser!("stop"*);
+    assert_parse_eq(p, "", vec![]);
+    assert_parse_eq(p, "stop", vec![()]);
+    assert_parse_eq(p, "stopstop", vec![(), ()]);
+}
+
+#[test]
 fn test_alt_tuple() {
     // Tuples returned by an alternation don't get concatenated with other
     // nearby terms.
     assert_parse_eq(
-        parser!({u32 "x" u32, (a: u32) "^2" => (a, a)} " -> " alpha),
+        parser!({u32 "x" u32, a: u32 "^2" => (a, a)} " -> " alpha),
         "3x4 -> J",
         ((3, 4), 'J'),
     );
 
     assert_parse_eq(
-        parser!(alpha " = " {u32 "x" u32, (a: u32) "^2" => (a, a)}),
+        parser!(alpha " = " {u32 "x" u32, a: u32 "^2" => (a, a)}),
         "J = 5^2",
         ('J', (5, 5)),
     );
@@ -154,7 +162,7 @@ mod names_and_scopes {
     fn test_map_syntax() {
         use aoc_parse::{parser, prelude::u64};
 
-        let p = parser!((a: u64) " " (b: u64) => 100 * a + b);
+        let p = parser!(a: u64 " " b: u64 => 100 * a + b);
 
         assert_parse_eq(p, "31 34", 3134);
     }
@@ -167,7 +175,7 @@ fn test_chars() {
 
     assert_parse_error(parser!('\n'), "q", r#"expected "\n" at"#);
 
-    let p = parser!((a: alpha+) => a.into_iter().collect::<String>());
+    let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(p, "");
     assert_no_parse(p, " hello");
     assert_parse_eq(p, "hello", "hello");

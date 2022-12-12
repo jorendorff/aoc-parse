@@ -12,8 +12,11 @@ pub use crate::parsers::{alt, empty, lines, opt, parenthesize, plus, sequence, s
 /// expr ::= seq
 ///   | seq "=>" rust_expr      -- custom conversion
 ///
-/// seq ::= term
-///   | seq term                -- concatenated subpatterns
+/// seq ::= lterm
+///   | seq lterm               -- concatenated subpatterns
+///
+/// lterm ::= term
+///   | ident ":" term          -- labeled subpattern
 ///
 /// term ::= prim
 ///   | term "*"                -- optional repeating
@@ -77,18 +80,18 @@ macro_rules! aoc_parse_helper {
     };
 
     // Detect Kleene * and apply it to the preceding term.
-    (@seq [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
+    (@seq [ * $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::star($top) , $($stack ,)* ] [ $($pats ,)* ])
     };
 
     // Detect Kleene + and apply it to the preceding term.
-    (@seq [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ] [ _ , $($pats ,)* ])
+    (@seq [ + $($tail:tt)* ] [ $top:expr , $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::plus($top) , $($stack ,)* ] [ $($pats ,)* ])
     };
 
     // Detect optional `?` and apply it to the preceding term.
-    (@seq [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $top_pat:tt , $($pats:tt ,)* ]) => {
-        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ] [ _ , $($pats ,)* ])
+    (@seq [ ? $($tail:tt)* ] [ $top:expr , $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ $crate::macros::opt($top) , $($stack)* ] [ $($pats ,)* ])
     };
 
     // A quantifier at the beginning of input (nothing on the stack) is an errror.
@@ -102,7 +105,27 @@ macro_rules! aoc_parse_helper {
         core::compile_error!("quantifier `?` has to come after something, not at the start of an expression.")
     };
 
-    // call syntax
+    // Reject incorrect label syntax.
+    (@seq [ $label:ident : => $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!(
+            core::concat!("missing pattern after `", core::stringify!($label), ":`")
+        );
+    };
+    (@seq [ $label:ident : ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!(
+            core::concat!("missing pattern after `", core::stringify!($label), ":`")
+        );
+    };
+    (@seq [ $label1:ident : $label2:ident : ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        core::compile_error!(
+            core::concat!(
+                "missing pattern between `", core::stringify!($label1), ":` and `"
+                    core::stringify!($label2), ":`"
+            )
+        );
+    };
+
+    // Function call
     (@seq [ $f:ident ( $($args:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
             @seq
@@ -116,20 +139,22 @@ macro_rules! aoc_parse_helper {
         )
     };
 
-    // parenthesized subpattern with a label
-    (@seq [ ( $sublabel:ident : $($expr:tt)* ) $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    // Labelled function call
+    (@seq [ $label:ident : $f:ident ( $( $args:tt )* )  $( $tail:tt )* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
             @seq
             [ $($tail)* ]
             [
-                $crate::aoc_parse_helper!(@prim ( $($expr)* )) ,
+                $crate::aoc_parse_helper!(@args ( $f ) [ $( $args )* ] [] ())
+                ,
                 $($stack ,)*
             ]
-            [ $sublabel , $($pats ,)* ]
+            [ $label , $($pats ,)* ]
         )
     };
 
-    // string literal
+    // any Rust literal (strings and chars are valid patterns; others may be
+    // used as function arguments)
     (@seq [ $x:literal $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         $crate::aoc_parse_helper!(
             @seq
@@ -139,6 +164,19 @@ macro_rules! aoc_parse_helper {
                 $($stack ,)*
             ]
             [ #, /* no pattern */ $($pats ,)* ]
+        )
+    };
+
+    // Other labeled term
+    (@seq [ $label:ident : $x:tt $($tail:tt)* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+        $crate::aoc_parse_helper!(
+            @seq
+            [ $($tail)* ]
+            [
+                $crate::aoc_parse_helper!(@prim $x) ,
+                $($stack ,)*
+            ]
+            [ $label , $($pats ,)* ]
         )
     };
 

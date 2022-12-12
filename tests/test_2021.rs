@@ -26,9 +26,9 @@ forward 2
     }
 
     let p = parser!(lines({
-        "down " (n: u64) => Command::Down(n),
-        "up " (n: u64) => Command::Up(n),
-        "forward " (n: u64) => Command::Forward(n),
+        "down " n: u64 => Command::Down(n),
+        "up " n: u64 => Command::Up(n),
+        "forward " n: u64 => Command::Forward(n),
     }));
 
     use Command::*;
@@ -72,18 +72,38 @@ fn day5() {
     }
 
     let p = parser!(
-            lines(
-                (x1: usize) ',' (y1: usize) " -> " (x2: usize) ',' (y2: usize)
-                    => Line { x1, y1, x2, y2 }
-            )
-        );
+        lines(
+            x1: usize ',' y1: usize " -> " x2: usize ',' y2: usize
+                => Line { x1, y1, x2, y2 }
+        )
+    );
     assert_eq!(
         p.parse(input).unwrap(),
         vec![
-            Line { x1: 0, y1: 9, x2: 5, y2: 9 },
-            Line { x1: 8, y1: 0, x2: 0, y2: 8 },
-            Line { x1: 9, y1: 4, x2: 3, y2: 4 },
-            Line { x1: 2, y1: 2, x2: 2, y2: 1 },
+            Line {
+                x1: 0,
+                y1: 9,
+                x2: 5,
+                y2: 9
+            },
+            Line {
+                x1: 8,
+                y1: 0,
+                x2: 0,
+                y2: 8
+            },
+            Line {
+                x1: 9,
+                y1: 4,
+                x2: 3,
+                y2: 4
+            },
+            Line {
+                x1: 2,
+                y1: 2,
+                x2: 2,
+                y2: 1
+            },
         ],
     );
 }
