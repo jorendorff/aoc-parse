@@ -129,8 +129,8 @@ fn day7() {
 
     assert_parse_eq(
         parser!(lines({
-            s: string(alpha+) => Seq::Supernet(s),
-            '[' s: string(alpha+) ']' => Seq::Hypernet(s),
+            s:string(alpha+) => Seq::Supernet(s),
+            '[' s:string(alpha+) ']' => Seq::Hypernet(s),
         }+)),
         "\
             iungssgfnnjlgdferc[xfffplonmzjmxkinhl]dehxdielvncdawomqk[teizynepguvtgofr]fjazkxesmlwryphifh[ppjfvfefqhmuqtdp]luopramrehtriilwlou\n\
@@ -180,9 +180,9 @@ fn day8() {
 
     assert_parse_eq(
         parser!(lines({
-            "rect " w: usize 'x' h: usize => Insn::Rect(w, h),
-            "rotate column x=" x: usize " by " n: usize => Insn::RotateColumn(x, n),
-            "rotate row y=" y: usize " by " n: usize => Insn::RotateRow(y, n),
+            "rect " w:usize 'x' h:usize => Insn::Rect(w, h),
+            "rotate column x=" x:usize " by " n:usize => Insn::RotateColumn(x, n),
+            "rotate row y=" y:usize " by " n:usize => Insn::RotateRow(y, n),
         })),
         "\
         rotate row y=0 by 8\n\

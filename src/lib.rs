@@ -201,8 +201,8 @@
 //!     #     p1: Point,
 //!     #     p2: Point,
 //!     # }
-//!     let point = parser!("(" x: i64 "," y: i64 ")" => Point(x, y));
-//!     let line = parser!(p1: point "-" p2: point => Line { p1, p2 });
+//!     let point = parser!("(" x:i64 "," y:i64 ")" => Point(x, y));
+//!     let line = parser!(p1:point "-" p2:point => Line { p1, p2 });
 //!
 //!     assert_eq!(
 //!         line.parse("(3,66)-(27,8)").unwrap(),
@@ -258,12 +258,12 @@
 //!
 //!     let reg = parser!({"a" => A, "b" => B});
 //!     let p = parser!(lines({
-//!         "hlf " r: reg => Hlf(r),
-//!         "tpl " r: reg => Tpl(r),
-//!         "inc " r: reg => Inc(r),
-//!         "jmp " offset: isize => Jmp(offset),
-//!         "jie " r: reg ", " offset: isize => Jie(r, offset),
-//!         "jio " r: reg ", " offset: isize => Jio(r, offset),
+//!         "hlf " r:reg => Hlf(r),
+//!         "tpl " r:reg => Tpl(r),
+//!         "inc " r:reg => Inc(r),
+//!         "jmp " offset:isize => Jmp(offset),
+//!         "jie " r:reg ", " offset:isize => Jie(r, offset),
+//!         "jio " r:reg ", " offset:isize => Jio(r, offset),
 //!     }));
 //!     ```
 //!

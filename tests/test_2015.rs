@@ -85,17 +85,17 @@ fn day7() {
 
     let reg = parser!(string(lower+));
     let p = parser!(lines({
-        a: u32 " -> " c: reg
+        a:u32 " -> " c:reg
             => Send(a, c),
-        a: reg " AND " b: reg " -> " c: reg
+        a:reg " AND " b:reg " -> " c:reg
             => And(a, b, c),
-        a: reg " OR " b: reg " -> " c: reg
+        a:reg " OR " b:reg " -> " c:reg
             => Or(a, b, c),
-        a: reg " LSHIFT " b: u32 " -> " c: reg
+        a:reg " LSHIFT " b:u32 " -> " c:reg
             => LShift(a, b, c),
-        a: reg " RSHIFT " b: u32 " -> " c: reg
+        a:reg " RSHIFT " b:u32 " -> " c:reg
             => RShift(a, b, c),
-        "NOT " a: reg " -> " c: reg
+        "NOT " a:reg " -> " c:reg
             => Not(a, c),
     }));
 
@@ -123,7 +123,7 @@ fn day8() {
             lower,
             "\\\\" => '\\',
             "\\\"" => '"',
-            "\\x" h: digit_hex l: digit_hex
+            "\\x" h:digit_hex l:digit_hex
                 => char::from_u32(16 * h as u32 + l as u32).unwrap(),
         })* "\""
     ));
@@ -411,12 +411,12 @@ fn day23() {
     use Insn::*;
 
     let p = parser!(lines({
-        "hlf " r: reg => Hlf(r),
-        "tpl " r: reg => Tpl(r),
-        "inc " r: reg => Inc(r),
-        "jmp " offset: isize => Jmp(offset),
-        "jie " r: reg ", " offset: isize => Jie(r, offset),
-        "jio " r: reg ", " offset: isize => Jio(r, offset),
+        "hlf " r:reg => Hlf(r),
+        "tpl " r:reg => Tpl(r),
+        "inc " r:reg => Inc(r),
+        "jmp " offset:isize => Jmp(offset),
+        "jie " r:reg ", " offset:isize => Jie(r, offset),
+        "jio " r:reg ", " offset:isize => Jio(r, offset),
     }));
 
     assert_parse_eq(

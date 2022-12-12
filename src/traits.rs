@@ -80,7 +80,7 @@ pub trait Parser {
     ///
     /// ```
     /// # use aoc_parse::{parser, prelude::*};
-    /// let p = parser!(x: u32 => x * 1_000_001);
+    /// let p = parser!(x:u32 => x * 1_000_001);
     /// assert_eq!(p.parse("123").unwrap(), 123_000_123);
     /// ```
     ///

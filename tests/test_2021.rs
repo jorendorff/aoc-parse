@@ -26,9 +26,9 @@ forward 2
     }
 
     let p = parser!(lines({
-        "down " n: u64 => Command::Down(n),
-        "up " n: u64 => Command::Up(n),
-        "forward " n: u64 => Command::Forward(n),
+        "down " n:u64 => Command::Down(n),
+        "up " n:u64 => Command::Up(n),
+        "forward " n:u64 => Command::Forward(n),
     }));
 
     use Command::*;
@@ -73,7 +73,7 @@ fn day5() {
 
     let p = parser!(
         lines(
-            x1: usize ',' y1: usize " -> " x2: usize ',' y2: usize
+            x1:usize ',' y1:usize " -> " x2:usize ',' y2:usize
                 => Line { x1, y1, x2, y2 }
         )
     );

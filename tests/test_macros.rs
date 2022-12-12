@@ -91,10 +91,11 @@ fn test_lines_exact() {
 
 #[test]
 fn test_unused_labels() {
-    let p = parser!((_a: "ok") => "OK");
+    let p = parser!(_a:"ok" => "OK");
     assert_parse_eq(p, "ok", "OK");
 
-    let p = parser!((_a: "hello") " " (_b: "world") => "!");
+    // TODO: this is not great -- the test makes no sense this way and fails to compile if you remove the excess parentheses
+    let p = parser!((_a:"hello") " " (_b:"world") => "!");
     assert_parse_eq(p, "hello world", "!");
     assert_no_parse(p, "");
     assert_no_parse(p, "hello");
@@ -118,13 +119,13 @@ fn test_alt_tuple() {
     // Tuples returned by an alternation don't get concatenated with other
     // nearby terms.
     assert_parse_eq(
-        parser!({u32 "x" u32, a: u32 "^2" => (a, a)} " -> " alpha),
+        parser!({u32 "x" u32, a:u32 "^2" => (a, a)} " -> " alpha),
         "3x4 -> J",
         ((3, 4), 'J'),
     );
 
     assert_parse_eq(
-        parser!(alpha " = " {u32 "x" u32, a: u32 "^2" => (a, a)}),
+        parser!(alpha " = " {u32 "x" u32, a:u32 "^2" => (a, a)}),
         "J = 5^2",
         ('J', (5, 5)),
     );
@@ -162,7 +163,7 @@ mod names_and_scopes {
     fn test_map_syntax() {
         use aoc_parse::{parser, prelude::u64};
 
-        let p = parser!(a: u64 " " b: u64 => 100 * a + b);
+        let p = parser!(a:u64 " " b:u64 => 100 * a + b);
 
         assert_parse_eq(p, "31 34", 3134);
     }
@@ -175,7 +176,7 @@ fn test_chars() {
 
     assert_parse_error(parser!('\n'), "q", r#"expected "\n" at"#);
 
-    let p = parser!(a: alpha+ => a.into_iter().collect::<String>());
+    let p = parser!(a:alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(p, "");
     assert_no_parse(p, " hello");
     assert_parse_eq(p, "hello", "hello");
