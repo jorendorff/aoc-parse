@@ -1,7 +1,7 @@
 //! Traits for types that are used as the `RawOutput` type of parsers.
 
 // There are finitely many flavors of RawOutput, necessarily, because we need
-// to implement Concat for all combinations, an O(n^2) matrix.
+// to implement RawOutputConcat for all combinations, an O(n^2) matrix.
 //
 // The RawOutput flavors are:
 //
@@ -11,17 +11,6 @@
 //     `(Option<T>,)` and repeating parsers `(Vec<T>,)`.
 //
 // -   `(A, B, ...)` - Tuple. Produced by concatenation.
-//
-// I'm planning to add one more, a "text" type that I'll use for `alpha` and such,
-// and the special feature is that when it concatenates with other text, you get text
-// rather than a tuple.
-//
-//     parser!(u64 any_char u64)      --> Output=(u64, char, u64)
-//     parser!(alpha+ digit*)         --> Output=String
-//
-// This would be rather magical. It would be necessary to cast if you *don't* want the
-// automatic conversion, maybe using the syntax `(alpha as char)+`. Or just parentheses.
-// Still thinking about just how I would want it to work.
 
 /// A type that can be used as a parser's `RawOutput` type.
 ///
