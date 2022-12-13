@@ -1,4 +1,4 @@
-pub use crate::parsers::{alt, empty, lines, opt, parenthesize, plus, sequence, star};
+pub use crate::parsers::{alt, empty, lines, opt, plus, sequence, single_value, skip, star};
 
 /// Macro that creates a parser for a given pattern.
 ///
@@ -246,7 +246,7 @@ macro_rules! aoc_parse_helper {
         $x
     };
     (@prim ( $($nested:tt)* )) => {
-        $crate::macros::parenthesize(
+        $crate::macros::single_value(
             $crate::aoc_parse_helper!(@seq [ $( $nested )* ] [ ] [ ])
         )
     };
@@ -350,7 +350,7 @@ macro_rules! aoc_parse_helper {
 
     // Hand anything else off to the @seq submacro.
     ($($tail:tt)*) => {
-        $crate::macros::parenthesize(
+        $crate::macros::single_value(
             $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ ] [ ])
         )
     };

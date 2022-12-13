@@ -17,7 +17,7 @@ pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, uppe
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};
-pub use map::MapParser;
+pub use map::{single_value, skip, MapParser};
 pub use primitive::{
     bool, i128, i128_bin, i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin,
     i64_hex, i8, i8_bin, i8_hex, isize, isize_bin, isize_hex, u128, u128_bin, u128_hex, u16,
@@ -39,35 +39,6 @@ pub fn opt<T>(
         Either::Left(left) => Some(left),
         Either::Right(()) => None,
     })
-}
-
-type ParenthesizedParser<P> = MapParser<P, fn(<P as Parser>::Output) -> <P as Parser>::Output>;
-
-// Make sure that RawOutput is exactly `(T,)`.
-//
-// Used by the `parser!()` macro to implement grouping parentheses.
-// Parenthesizing an expression makes a semantic difference to prevent it from
-// disappearing in concatenation.
-//
-// Example 1: In `parser!("hello " (x: i32) => x)` the raw output type of
-// `"hello "` is `()` and it disappears when concatenated with `(x: i32)`. Now
-// if we label `"hello"` `parser!((a: "hello ") (x: i32) => (a, x))` we have to
-// make sure that doesn't happen so that we can build a pattern that matches
-// both `a` and `x`.
-//
-// Example 2: `parser!((i32 " " i32) " " (i32))` should have the output type
-// `((i32, i32), i32)`; but conatenating the three top-level RawOutput types,
-// `(i32, i32)` `()` and `(i32,)`, would produce the flat `(i32, i32, i32)`
-// instead.
-//
-// It turns out all we need is to ensure the `RawOutput` type of the
-// parenthesized parser is a singleton tuple type.
-#[doc(hidden)]
-pub fn parenthesize<P>(pattern: P) -> ParenthesizedParser<P>
-where
-    P: Parser,
-{
-    pattern.map(|val| val)
 }
 
 #[cfg(test)]
