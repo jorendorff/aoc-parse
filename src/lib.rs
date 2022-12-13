@@ -188,13 +188,14 @@
 //!     code you need is:
 //!
 //!     ```
+//!     # use aoc_parse::{parser, prelude::*};
 //!     struct Elf {
 //!         name: String,
 //!         height: u32,
 //!     }
 //!
 //!     let p = parser!(lines(
-//!         elf:string(alpha+) '=' ht:i32 => Elf { name: elf, height: ht }
+//!         elf:string(alpha+) '=' ht:u32 => Elf { name: elf, height: ht }
 //!     ));
 //!     ```
 //!

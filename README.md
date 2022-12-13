@@ -188,7 +188,7 @@ Custom conversion:
     }
 
     let p = parser!(lines(
-        elf:string(alpha+) '=' ht:i32 => Elf { name: elf, height: ht }
+        elf:string(alpha+) '=' ht:u32 => Elf { name: elf, height: ht }
     ));
     ```
 
