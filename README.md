@@ -165,35 +165,39 @@ Repeating patterns:
 
 Custom conversion:
 
-*   <code>... (<var>name1</var>: <var>pattern1</var>) ... => <var>expr</var></code> -
+*   <code>... <var>name1</var>:<var>pattern1</var> ... => <var>expr</var></code> -
     On successfully matching the patterns to the left of `=>`, evaluate the Rust
     expression *expr* to convert the results to a single Rust value.
 
-    Use this to convert input to structs or enums. For example, suppose we have
-    input that looks like `(3,66)-(27,8)` and we want to produce these structs:
+    Use this to convert input to structs. For instance, suppose your puzzle input
+    contains each elf's name and height:
+
+    ```text
+    Holly=33
+    Ivy=7
+    DouglasFir=1093
+    ```
+
+    and you'd like to turn this into a vector of `struct Elf` values. The
+    code you need is:
 
     ```
-    #[derive(Debug, PartialEq)]
-    struct Point(i64, i64);
-
-    #[derive(Debug, PartialEq)]
-    struct Line {
-        p1: Point,
-        p2: Point,
+    struct Elf {
+        name: String,
+        height: u32,
     }
+
+    let p = parser!(lines(
+        elf:string(alpha+) '=' ht:i32 => Elf { name: elf, height: ht }
+    ));
     ```
 
-    The patterns we need are:
+    The name `elf` applies to the pattern `string(alpha+)` and the name
+    `ht` applies to the pattern `i32`. The bit after the `=>` is
+    plain old Rust code.
 
-    ```
-    let point = parser!("(" (x: i64) "," (y: i64) ")" => Point(x, y));
-    let line = parser!((p1: point) "-" (p2: point) => Line { p1, p2 });
-
-    assert_eq!(
-        line.parse("(3,66)-(27,8)").unwrap(),
-        Line { p1: Point(3, 66), p2: Point(27, 8) },
-    );
-    ```
+    The *name*s are in scope only for the following *expr* in the same
+    set of matching parentheses or braces.
 
 Alternatives:
 
@@ -242,12 +246,12 @@ Alternatives:
 
     let reg = parser!({"a" => A, "b" => B});
     let p = parser!(lines({
-        "hlf " (r: reg) => Hlf(r),
-        "tpl " (r: reg) => Tpl(r),
-        "inc " (r: reg) => Inc(r),
-        "jmp " (offset: isize) => Jmp(offset),
-        "jie " (r: reg) ", " (offset: isize) => Jie(r, offset),
-        "jio " (r: reg) ", " (offset: isize) => Jio(r, offset),
+        "hlf " r:reg => Hlf(r),
+        "tpl " r:reg => Tpl(r),
+        "inc " r:reg => Inc(r),
+        "jmp " offset:isize => Jmp(offset),
+        "jie " r:reg ", " offset:isize => Jie(r, offset),
+        "jio " r:reg ", " offset:isize => Jio(r, offset),
     }));
     ```
 
