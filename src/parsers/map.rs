@@ -2,63 +2,6 @@
 
 use crate::{types::ParserOutput, ParseContext, ParseIter, Parser, Reported, Result};
 
-pub struct MapRawParser<P, F> {
-    parser: P,
-    mapper: F,
-}
-
-pub struct MapRawParseIter<'parse, P, F>
-where
-    P: Parser + 'parse,
-{
-    iter: P::Iter<'parse>,
-    mapper: &'parse F,
-}
-
-impl<P, F, T> Parser for MapRawParser<P, F>
-where
-    P: Parser,
-    F: Fn(P::RawOutput) -> T,
-    T: ParserOutput,
-{
-    type Output = <T as ParserOutput>::UserType;
-    type RawOutput = T;
-    type Iter<'parse> = MapRawParseIter<'parse, P, F>
-    where
-        P: 'parse,
-        F: 'parse;
-
-    fn parse_iter<'parse>(
-        &'parse self,
-        context: &mut ParseContext<'parse>,
-        start: usize,
-    ) -> Result<Self::Iter<'parse>, Reported> {
-        let iter = self.parser.parse_iter(context, start)?;
-        let mapper = &self.mapper;
-        Ok(MapRawParseIter { iter, mapper })
-    }
-}
-
-impl<'parse, P, F, T> ParseIter<'parse> for MapRawParseIter<'parse, P, F>
-where
-    P: Parser,
-    F: Fn(P::RawOutput) -> T,
-{
-    type RawOutput = T;
-
-    fn match_end(&self) -> usize {
-        self.iter.match_end()
-    }
-
-    fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
-        self.iter.backtrack(context)
-    }
-
-    fn into_raw_output(self) -> T {
-        (self.mapper)(self.iter.into_raw_output())
-    }
-}
-
 #[derive(Clone, Copy)]
 pub struct MapParser<P, F> {
     pub(crate) parser: P,
