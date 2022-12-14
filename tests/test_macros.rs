@@ -84,7 +84,7 @@ fn test_lines_exact() {
     assert_parse(p, "");
     assert_parse(p, "whee!\nwhee!\nwhee!\n");
     assert_parse(p, "whee!\n");
-    assert_no_parse(p, "whee!");
+    assert_parse(p, "whee!");
     assert_no_parse(p, "\n");
     assert_no_parse(p, "whee!\n\n");
 }
