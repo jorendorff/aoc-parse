@@ -1,10 +1,10 @@
 [package]
 name = "aoc-parse"
-version = "0.2.10"
+version = "0.2.11"
 edition = "2021"
 description = "A little library for parsing your Advent of Code puzzle input"
-repository = "https://github.com/jorendorff/advent-of-code"
-homepage = "https://github.com/jorendorff/advent-of-code/tree/main/aoc-parse"
+repository = "https://github.com/jorendorff/aoc-parse"
+homepage = "https://github.com/jorendorff/aoc-parse/#aoc-parse"
 license = "MIT"
 keywords = ["aoc", "parse", "puzzle", "parser", "advent"]
 
