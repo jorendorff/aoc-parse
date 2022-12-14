@@ -23,6 +23,7 @@ use crate::{ParseError, Parser};
 /// ```
 ///
 /// [bad]: https://github.com/gobanos/aoc-runner/blob/master/src/lib.rs#L17
+#[doc(hidden)]
 pub fn aoc_parse<P, E>(puzzle_input: &str, parser: P) -> Result<P::Output, E>
 where
     P: Parser,

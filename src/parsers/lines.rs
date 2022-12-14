@@ -45,10 +45,11 @@ impl Region for Line {
 
     fn find_end(context: &mut ParseContext, start: usize) -> Result<(usize, usize), Reported> {
         let source = context.source();
-        source[start..]
-            .find('\n')
-            .map(|offset| (start + offset, start + offset + 1))
-            .ok_or_else(|| context.error_expected(source.len(), "\n"))
+        match source[start..].find('\n') {
+            Some(offset) => Ok((start + offset, start + offset + 1)),
+            None if start != source.len() => Ok((source.len(), source.len())),
+            None => Err(context.error_expected(source.len(), "line")),
+        }
     }
 
     fn report_incomplete_match(context: &mut ParseContext, end: usize) -> Reported {
@@ -81,11 +82,9 @@ impl Region for Section {
             // ending at a blank line
             Some(index) => Ok((start + index + 1, start + index + 2)),
             // ending at the end of `source`
-            None if start < source.len() && source.ends_with('\n') => {
-                Ok((source.len(), source.len()))
-            }
+            None if start < source.len() => Ok((source.len(), source.len())),
             // no end-of-section delimiter found
-            None => Err(context.error_expected(source.len(), "\n")),
+            None => Err(context.error_expected(source.len(), "section")),
         }
     }
 
@@ -239,4 +238,41 @@ pub fn section<P>(parser: P) -> SectionParser<P> {
 /// <code>section(<var>pattern</var>)*</code>.
 pub fn sections<P>(parser: P) -> RepeatParser<SectionParser<P>, EmptyParser> {
     star(section(parser))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{line, section};
+    use crate::prelude::u32;
+    use crate::testing::*;
+
+    #[test]
+    fn test_newline_handling() {
+        let p = line("hello world");
+        assert_parse_eq(p, "hello world\n", ());
+        assert_parse_eq(p, "hello world", ());
+        assert_no_parse(p, "hello world\n\n");
+
+        let p = sequence(line("dog"), line("cat"));
+        assert_no_parse(p, "dog\n");
+        assert_no_parse(p, "dogcat");
+        assert_no_parse(p, "dogcat\n");
+        assert_parse_eq(p, "dog\ncat", ((), ()));
+        assert_parse_eq(p, "dog\ncat\n", ((), ()));
+
+        let p = section(plus(line(u32)));
+        assert_no_parse(p, "15\n16\n\n\n");
+        assert_parse_eq(p, "15\n16\n\n", vec![15, 16]);
+        assert_parse_eq(p, "15\n16\n", vec![15, 16]);
+        assert_parse_eq(p, "15\n16", vec![15, 16]);
+
+        let p = sequence(section(line("sec1")), section(line("sec2")));
+        assert_parse_eq(p, "sec1\n\nsec2\n\n", ((), ()));
+        assert_parse_eq(p, "sec1\n\nsec2\n", ((), ()));
+        assert_parse_eq(p, "sec1\n\nsec2", ((), ()));
+        assert_no_parse(p, "sec1\nsec2\n\n");
+        assert_no_parse(p, "sec1\nsec2\n");
+        assert_no_parse(p, "sec1\nsec2");
+        assert_no_parse(p, "sec1sec2\n\n");
+    }
 }

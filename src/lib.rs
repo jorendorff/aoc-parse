@@ -40,7 +40,7 @@
 //! fn parse_input(text: &str) -> anyhow::Result<Vec<(u64, u64, u64)>> {
 //!     use aoc_parse::{parser, prelude::*};
 //!     let p = parser!(lines(u64 "x" u64 "x" u64));
-//!     aoc_parse(text, p)
+//!     p.parse(text)
 //! }
 //!
 //! assert_eq!(
@@ -269,8 +269,14 @@
 //!     matches *pattern*, and the newline at the end of the line.
 //!
 //!     This is like <code>^<var>pattern</var>\n</code> in regular expressions,
-//!     except <code>line(<var>pattern</var>)</code> will only ever match exactly
-//!     one line of text, even if *pattern* could match more newlines.
+//!     with two minor differences:
+//!
+//!     -   <code>line(<var>pattern</var>)</code> will only ever match exactly
+//!         one line of text, even if *pattern* could match more newlines.
+//!
+//!     -   If your input does not end with a newline,
+//!         <code>line(<var<pattern</var>)</code> can still match the
+//!         non-newline-terminated "line" at the end.
 //!
 //!     `line(string(any_char+))` matches a line of text, strips off the newline
 //!     character, and returns the rest as a `String`.
