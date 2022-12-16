@@ -19,7 +19,7 @@
 //!
 //! # How to use aoc-parse
 //!
-//! **If you are NOT using [aoc-runner],** you can use aoc-parse like this:
+//! It's pretty easy.
 //!
 //! ```
 //! use aoc_parse::{parser, prelude::*};
@@ -31,7 +31,7 @@
 //! );
 //! ```
 //!
-//! **If you ARE using aoc-runner,** do this instead:
+//! If you're using [aoc-runner], it might look like this:
 //!
 //! ```
 //! use aoc_runner_derive::*;
@@ -42,11 +42,6 @@
 //!     let p = parser!(lines(u64 "x" u64 "x" u64));
 //!     p.parse(text).unwrap()
 //! }
-//!
-//! assert_eq!(
-//!     parse_input("4x23x21\n22x29x19"),
-//!     vec![(4, 23, 21), (22, 29, 19)]
-//! );
 //! ```
 //!
 //! # Patterns

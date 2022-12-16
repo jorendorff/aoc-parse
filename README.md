@@ -21,7 +21,7 @@ The parser for this format is a one-liner:
 
 ## How to use aoc-parse
 
-**If you are NOT using [aoc-runner],** you can use aoc-parse like this:
+It's pretty easy.
 
 ```rust
 use aoc_parse::{parser, prelude::*};
@@ -33,22 +33,17 @@ assert_eq!(
 );
 ```
 
-**If you ARE using aoc-runner,** do this instead:
+If you're using [aoc-runner], it might look like this:
 
 ```rust
 use aoc_runner_derive::*;
+use aoc_parse::{parser, prelude::*};
 
 #[aoc_generator(day2)]
-fn parse_input(text: &str) -> anyhow::Result<Vec<(u64, u64, u64)>> {
-    use aoc_parse::{parser, prelude::*};
+fn parse_input(text: &str) -> Vec<(u64, u64, u64)> {
     let p = parser!(lines(u64 "x" u64 "x" u64));
-    p.parse(text)
+    p.parse(text).unwrap()
 }
-
-assert_eq!(
-    parse_input("4x23x21\n22x29x19").unwrap(),
-    vec![(4, 23, 21), (22, 29, 19)]
-);
 ```
 
 ## Patterns
