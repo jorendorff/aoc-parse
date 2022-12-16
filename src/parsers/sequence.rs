@@ -147,7 +147,7 @@ pub fn sequence<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail
     }
 }
 
-// Used by the `parser!()` macro to implement mapping.
+// Used by the `parser!()` macro to implement `=>`-mapping.
 #[doc(hidden)]
 pub fn pair<Head, Tail>(head: Head, tail: Tail) -> SequenceParser<Head, Tail, Pair> {
     SequenceParser {

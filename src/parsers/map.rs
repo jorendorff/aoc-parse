@@ -203,6 +203,7 @@ where
 /// });
 /// assert_eq!(p2.parse("37 km").unwrap(), 2);
 /// ```
+#[doc(hidden)]
 pub fn map<P, T, F>(parser: P, mapper: F) -> MapParser<P, F>
 where
     P: Parser,
