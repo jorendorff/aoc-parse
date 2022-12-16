@@ -1,6 +1,5 @@
 //! Core traits.
 
-use crate::parsers::MapParser;
 use crate::types::ParserOutput;
 use crate::{ParseContext, Reported, Result};
 
@@ -65,46 +64,6 @@ pub trait Parser {
             }
         }
         Ok(it.into_raw_output())
-    }
-
-    /// Produce a new parser that behaves like this parser but additionally
-    /// applies the given closure when producing the value.
-    ///
-    /// ```
-    /// use aoc_parse::{parser, prelude::*};
-    /// let p = u32.map(|x| x * 1_000_001);
-    /// assert_eq!(p.parse("123").unwrap(), 123_000_123);
-    /// ```
-    ///
-    /// This is used to implement the `=>` feature of `parser!`.
-    ///
-    /// ```
-    /// # use aoc_parse::{parser, prelude::*};
-    /// let p = parser!(x:u32 => x * 1_000_001);
-    /// assert_eq!(p.parse("123").unwrap(), 123_000_123);
-    /// ```
-    ///
-    /// The closure is called after the *overall* parse succeeds, as part of
-    /// turning the parse into Output values. This means the function
-    /// will not be called during a partly-successful parse that later fails.
-    ///
-    /// ```
-    /// # use aoc_parse::{parser, prelude::*};
-    /// let p = parser!(("A" => panic!()) "B" "C");
-    /// assert!(p.parse("ABX").is_err());
-    ///
-    /// let p2 = parser!({
-    ///    (i32 => panic!()) " ft" => 1,
-    ///    i32 " km" => 2,
-    /// });
-    /// assert_eq!(p2.parse("37 km").unwrap(), 2);
-    /// ```
-    fn map<T, F>(self, mapper: F) -> MapParser<Self, F>
-    where
-        Self: Sized,
-        F: Fn(Self::Output) -> T,
-    {
-        MapParser::new(self, mapper)
     }
 }
 

@@ -17,7 +17,7 @@ pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, uppe
 pub use either::{alt, either, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};
-pub use map::{single_value, skip, MapParser};
+pub use map::{map, single_value, skip, MapParser};
 pub use primitive::{
     bool, i128, i128_bin, i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin,
     i64_hex, i8, i8_bin, i8_hex, isize, isize_bin, isize_hex, u128, u128_bin, u128_hex, u16,
@@ -35,7 +35,7 @@ pub use string::StringParser;
 pub fn opt<T>(
     pattern: impl Parser<Output = T> + 'static,
 ) -> impl Parser<Output = Option<T>, RawOutput = (Option<T>,)> {
-    either(pattern, empty()).map(|e: Either<T, ()>| match e {
+    map(either(pattern, empty()), |e: Either<T, ()>| match e {
         Either::Left(left) => Some(left),
         Either::Right(()) => None,
     })
@@ -103,7 +103,7 @@ mod tests {
         assert_parse_eq(&u8, "255", 255u8);
         assert_parse_eq(&sequence("#", u32), "#100", 100u32);
         assert_parse_eq(
-            &sequence("forward ", u64).map(|a| a),
+            map(&sequence("forward ", u64), |a| a),
             "forward 1234",
             1234u64,
         );

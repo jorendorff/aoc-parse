@@ -16,12 +16,6 @@ where
     mapper: &'parse F,
 }
 
-impl<P, F> MapParser<P, F> {
-    pub fn new(parser: P, mapper: F) -> Self {
-        MapParser { parser, mapper }
-    }
-}
-
 impl<P, F, T> Parser for MapParser<P, F>
 where
     P: Parser,
@@ -175,6 +169,46 @@ where
     fn into_raw_output(self) -> Self::RawOutput {
         (self.inner.into_raw_output().into_user_type(),)
     }
+}
+
+/// Produce a new parser that behaves like this parser but additionally
+/// applies the given closure when producing the value.
+///
+/// ```
+/// use aoc_parse::{parser, prelude::*, macros::map};
+/// let p = map(u32, |x| x * 1_000_001);
+/// assert_eq!(p.parse("123").unwrap(), 123_000_123);
+/// ```
+///
+/// This is used to implement the `=>` feature of `parser!`.
+///
+/// ```
+/// # use aoc_parse::{parser, prelude::*};
+/// let p = parser!(x:u32 => x * 1_000_001);
+/// assert_eq!(p.parse("123").unwrap(), 123_000_123);
+/// ```
+///
+/// The closure is called after the *overall* parse succeeds, as part of
+/// turning the parse into Output values. This means the function
+/// will not be called during a partly-successful parse that later fails.
+///
+/// ```
+/// # use aoc_parse::{parser, prelude::*};
+/// let p = parser!(("A" => panic!()) "B" "C");
+/// assert!(p.parse("ABX").is_err());
+///
+/// let p2 = parser!({
+///    (i32 => panic!()) " ft" => 1,
+///    i32 " km" => 2,
+/// });
+/// assert_eq!(p2.parse("37 km").unwrap(), 2);
+/// ```
+pub fn map<P, T, F>(parser: P, mapper: F) -> MapParser<P, F>
+where
+    P: Parser,
+    F: Fn(P::Output) -> T,
+{
+    MapParser { parser, mapper }
 }
 
 /// Return a parser that matches the same strings as `parser`, but after

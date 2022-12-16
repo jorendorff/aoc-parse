@@ -1,7 +1,9 @@
 //! Alternation.
 
 use crate::{
-    parsers::MapParser, types::ParserOutput, ParseContext, ParseIter, Parser, Reported, Result,
+    parsers::{map, MapParser},
+    types::ParserOutput,
+    ParseContext, ParseIter, Parser, Reported, Result,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -103,7 +105,7 @@ where
     A: Parser<Output = T>,
     B: Parser<Output = T>,
 {
-    either(left, right).map(|out| match out {
+    map(either(left, right), |out| match out {
         Either::Left(value) => value,
         Either::Right(value) => value,
     })

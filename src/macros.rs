@@ -1,4 +1,4 @@
-pub use crate::parsers::{alt, empty, lines, opt, plus, sequence, single_value, skip, star};
+pub use crate::parsers::{alt, empty, lines, map, opt, plus, sequence, single_value, skip, star};
 
 /// Macro that creates a parser for a given pattern.
 ///
@@ -63,7 +63,7 @@ macro_rules! aoc_parse_helper {
 
     // Mapper at the end of a pattern that is not labeled, `expr ::= label => rust_expr`.
     (@seq [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
-        $crate::Parser::map(
+        $crate::macros::map(
             $crate::aoc_parse_helper!(@seq [] [ $($stack)* ] [ $($pats ,)* ]) ,
             | ( $crate::aoc_parse_helper!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
         )
