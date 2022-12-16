@@ -1,4 +1,6 @@
-pub use crate::parsers::{alt, empty, lines, map, opt, plus, sequence, single_value, skip, star};
+pub use crate::parsers::{
+    alt, empty, lines, map, opt, pair, plus, sequence, single_value, skip, star,
+};
 
 /// Macro that creates a parser for a given pattern.
 ///
@@ -64,7 +66,7 @@ macro_rules! aoc_parse_helper {
     // Mapper at the end of a pattern that is not labeled, `expr ::= label => rust_expr`.
     (@seq [ => $mapper:expr ] [ $($stack:tt)* ] [ $($pats:tt ,)* ]) => {
         $crate::macros::map(
-            $crate::aoc_parse_helper!(@seq [] [ $($stack)* ] [ $($pats ,)* ]) ,
+            $crate::aoc_parse_helper!(@reverse_map [ $($stack)* ] []),
             | ( $crate::aoc_parse_helper!(@reverse_pats [ $($pats ,)* ] []) ) | $mapper ,
         )
     };
@@ -163,7 +165,7 @@ macro_rules! aoc_parse_helper {
                 $crate::aoc_parse_helper!(@prim $x) ,
                 $($stack ,)*
             ]
-            [ #, /* no pattern */ $($pats ,)* ]
+            [ _, $($pats ,)* ]
         )
     };
 
@@ -219,21 +221,43 @@ macro_rules! aoc_parse_helper {
         $crate::aoc_parse_helper!(@reverse [ $($tail ,)* ] [ $crate::macros::sequence($head, $out) ])
     };
 
+    // aoc_parse_helper!(@reverse_map [input expr stack] [output expr])
+    //
+    // Take the stack of parsers and make a single parser that produces nested
+    // pairs. For example, if the input is [d, c, b, a] this produces the
+    // output `pair(a, pair(b, pair(c, d)))`.
+    (@reverse_map [] []) => {
+        $crate::macros::empty()
+    };
+    (@reverse_map [] [ $out:expr ]) => {
+        $out
+    };
+    (@reverse_map [ $head:expr , $( $tail:expr , )* ] []) => {
+        $crate::aoc_parse_helper!(@reverse_map [ $( $tail , )* ] [ $head ])
+    };
+    (@reverse_map [ $head:expr , $( $tail:expr , )* ] [ $out:expr ]) => {
+        $crate::aoc_parse_helper!(
+            @reverse_map
+                [ $( $tail , )* ]
+                [ $crate::macros::pair($head, $out) ]
+        )
+    };
+
     // aoc_parse_helper!(@reverse_pats [pattern stack] [output stack])
     //
     // Take the stack of Rust patterns, possibly interspersed with `#`
     // to indicate "no pattern", and produce a single pattern.
-    (@reverse_pats [ ] [ $out:pat , ]) => {
-        $out  // don't produce a singleton-tuple-pattern
+    (@reverse_pats [] []) => {
+        ()
     };
-    (@reverse_pats [ ] [ $($out:pat ,)* ]) => {
-        ( $( $out , )* )
+    (@reverse_pats [] [ $out:pat ]) => {
+        $out
     };
-    (@reverse_pats [ #, $($tail:tt ,)* ] [ $( $out:pat , )* ]) => {
-        $crate::aoc_parse_helper!(@reverse_pats [ $( $tail , )* ] [ $( $out , ) * ])
+    (@reverse_pats [ $head:pat , $( $tail:pat , )* ] []) => {
+        $crate::aoc_parse_helper!(@reverse_pats [ $( $tail , )* ] [ $head ])
     };
-    (@reverse_pats [ $head:pat , $($tail:tt ,)* ] [ $($out:pat ,)* ]) => {
-        $crate::aoc_parse_helper!(@reverse_pats [ $( $tail , )* ] [ $head, $($out ,)* ])
+    (@reverse_pats [ $head:pat , $( $tail:pat , )* ] [ $out:pat ]) => {
+        $crate::aoc_parse_helper!(@reverse_pats [ $( $tail , )* ] [ ($head, $out) ])
     };
 
     // aoc_parse_helper!(@prim pattern)

@@ -25,7 +25,7 @@ pub use primitive::{
     usize_bin, usize_hex,
 };
 pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
-pub use sequence::{sequence, SequenceParser};
+pub use sequence::{pair, sequence, SequenceParser};
 pub use string::StringParser;
 
 // --- Wrappers

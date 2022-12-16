@@ -90,6 +90,14 @@ fn test_lines_exact() {
 }
 
 #[test]
+fn test_mappers() {
+    const SP: char = ' ';
+    let p = parser!(a:u32 SP b:u32 => (a, b));
+
+    assert_parse_eq(p, "31 54", (31, 54));
+}
+
+#[test]
 fn test_unused_labels() {
     let p = parser!(_a:"ok" => "OK");
     assert_parse_eq(p, "ok", "OK");
