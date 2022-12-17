@@ -90,6 +90,13 @@ fn test_lines_exact() {
 }
 
 #[test]
+fn test_const_char() {
+    const SP: char = ' ';
+    let p = parser!(u32 SP u32);
+    assert_parse_eq(p, "311 4249", (311, 4249));
+}
+
+#[test]
 fn test_mappers() {
     const SP: char = ' ';
     let p = parser!(a:u32 SP b:u32 => (a, b));
