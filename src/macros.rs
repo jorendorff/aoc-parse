@@ -1,3 +1,53 @@
+//! Implementation of the `parser!` macro.
+//!
+//! # Syntax errors
+//!
+//! The doc-tests below address cases where the pattern is invalid and
+//! compilation should fail.
+//!
+//! ```compile_fail
+//! # use aoc_parse::parser;
+//! let p = parser!(label:);
+//! //      ^ERROR: missing pattern after `label:`
+//! ```
+//!
+//! ```compile_fail
+//! # use aoc_parse::parser;
+//! let p = parser!(nothing: => nothing);
+//! //      ^ERROR: missing pattern after `nothing:`
+//! ```
+//!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
+//! let p = parser!("double label " a:b:u32);
+//! //      ^ERROR: missing pattern between `a:` and `b:`
+//! ```
+//!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
+//! let p = parser!(alpha*?);
+//! //      ^ERROR: non-greedy quantifier `*?` is not supported
+//! ```
+//!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
+//! let p = parser!(? "hello world");
+//! //      ^ERROR: quantifier `?` has to come after something
+//! ```
+//!
+//! This one is not something we can detect at macro-expand time,
+//! but the ambiguity in `ident ( )` between function call and concatenation
+//! is always resolved in favor of a function call, regardless of whether `ident`
+//! actually names a function. We let Rust typeck flag the error if the user
+//! intended concatenation.
+//!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
+//! const PROMPT: &str = "> ";
+//! let p = parser!(PROMPT (alpha '-')*);
+//! //      ^ERROR: call expression requires function
+//! ```
+
 pub use crate::parsers::{alt, empty, lines, map, opt, pair, plus, sequence, single_value, star};
 
 /// Macro that creates a parser for a given pattern.
@@ -115,10 +165,10 @@ macro_rules! aoc_parse_helper {
             core::concat!("missing pattern after `", core::stringify!($label), ":`")
         );
     };
-    (@seq [ $label1:ident : $label2:ident : ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
+    (@seq [ $label1:ident : $label2:ident : $( $tail:tt )* ] [ $($stack:expr ,)* ] [ $($pats:tt ,)* ]) => {
         core::compile_error!(
             core::concat!(
-                "missing pattern between `", core::stringify!($label1), ":` and `"
+                "missing pattern between `", core::stringify!($label1), ":` and `",
                     core::stringify!($label2), ":`"
             )
         );
