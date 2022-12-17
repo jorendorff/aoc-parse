@@ -1,4 +1,5 @@
 mod chars;
+mod collections;
 mod dynamic;
 mod either;
 mod empty;
@@ -14,6 +15,7 @@ mod string;
 
 pub use self::regex::RegexParser;
 pub use chars::{alnum, alpha, any_char, char_of, digit, digit_bin, digit_hex, lower, upper};
+pub use collections::{btree_map, btree_set, hash_map, hash_set, vec_deque};
 pub use either::{alt, either, opt, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};

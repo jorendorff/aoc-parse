@@ -258,8 +258,8 @@ pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Patt
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::*;
     use crate::parsers::usize;
+    use crate::testing::*;
 
     #[test]
     fn test_repeat_basics() {
@@ -292,4 +292,3 @@ mod tests {
         assert_parse_eq(p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
     }
 }
-
