@@ -232,13 +232,13 @@ pub fn repeat<Pattern, Sep>(
     }
 }
 
-// Used by the `parser!()` macro to implement the `*` quantifier.
+/// Used by the `parser!()` macro to implement the `*` quantifier.
 #[doc(hidden)]
 pub fn star<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 0, None, false)
 }
 
-// Used by the `parser!()` macro to implement the `+` quantifier.
+/// Used by the `parser!()` macro to implement the `+` quantifier.
 #[doc(hidden)]
 pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
     repeat(pattern, empty(), 1, None, false)

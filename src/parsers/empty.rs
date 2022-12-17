@@ -34,7 +34,7 @@ impl<'parse> ParseIter<'parse> for EmptyParseIter {
     fn into_raw_output(self) -> Self::RawOutput {}
 }
 
-// Used by the `parser!()` macro to implement the empty pattern, `()`.
+/// Used by the `parser!()` macro to implement the empty pattern, `()`.
 #[doc(hidden)]
 pub fn empty() -> EmptyParser {
     EmptyParser
