@@ -243,8 +243,7 @@ macro_rules! aoc_parse_helper {
 
     // aoc_parse_helper!(@reverse_pats [pattern stack] [output stack])
     //
-    // Take the stack of Rust patterns, possibly interspersed with `#`
-    // to indicate "no pattern", and produce a single pattern.
+    // Take the stack of Rust patterns and produce a single pattern.
     (@reverse_pats [] []) => {
         ()
     };
