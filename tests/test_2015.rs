@@ -17,7 +17,7 @@ where
 
 #[test]
 fn day1() {
-    let p = parser!(line({"(" => 1i32, ")" => -1}*));
+    let p = parser!(line({"(" => 1, ")" => -1}*));
     assert_parse_eq(p, ")())())\n", vec![-1i32, 1, -1, -1, 1, -1, -1]);
 }
 
@@ -119,13 +119,13 @@ NOT el -> em
 #[test]
 fn day8() {
     let p = parser!(lines(
-        "\"" ({
+        '"' ({
             lower,
             "\\\\" => '\\',
             "\\\"" => '"',
             "\\x" h:digit_hex l:digit_hex
                 => char::from_u32(16 * h as u32 + l as u32).unwrap(),
-        })* "\""
+        })* '"'
     ));
 
     let example = r#""n\\c"
@@ -299,7 +299,7 @@ fn day17() {
 
 #[test]
 fn day18() {
-    let p = parser!(lines({"." => false, "#" => true}+));
+    let p = parser!(lines({'.' => false, '#' => true}+));
     assert_parse_eq(
         p,
         "\
