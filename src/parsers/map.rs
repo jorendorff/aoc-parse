@@ -2,9 +2,27 @@
 
 use crate::{types::ParserOutput, ParseContext, ParseIter, Parser, Reported, Result};
 
+pub trait Mapping<T> {
+    type RawOutput: ParserOutput;
+
+    fn apply(&self, value: T) -> Self::RawOutput;
+}
+
+impl<F, T, U> Mapping<T> for F
+where
+    T: ParserOutput,
+    F: Fn(T::UserType) -> U,
+{
+    type RawOutput = (U,);
+
+    fn apply(&self, value: T) -> Self::RawOutput {
+        (self(value.into_user_type()),)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct MapParser<P, F> {
-    pub(crate) parser: P,
+    pub(crate) inner: P,
     pub(crate) mapper: F,
 }
 
@@ -12,17 +30,17 @@ pub struct MapParseIter<'parse, P, F>
 where
     P: Parser + 'parse,
 {
-    iter: P::Iter<'parse>,
+    inner: P::Iter<'parse>,
     mapper: &'parse F,
 }
 
-impl<P, F, T> Parser for MapParser<P, F>
+impl<P, F> Parser for MapParser<P, F>
 where
     P: Parser,
-    F: Fn(P::Output) -> T,
+    F: Mapping<P::RawOutput>,
 {
-    type Output = T;
-    type RawOutput = (T,);
+    type Output = <F::RawOutput as ParserOutput>::UserType;
+    type RawOutput = F::RawOutput;
     type Iter<'parse> = MapParseIter<'parse, P, F>
     where
         P: 'parse,
@@ -33,31 +51,42 @@ where
         context: &mut ParseContext<'parse>,
         start: usize,
     ) -> Result<Self::Iter<'parse>, Reported> {
-        let iter = self.parser.parse_iter(context, start)?;
+        let iter = self.inner.parse_iter(context, start)?;
         let mapper = &self.mapper;
-        Ok(MapParseIter { iter, mapper })
+        Ok(MapParseIter {
+            inner: iter,
+            mapper,
+        })
     }
 }
 
-impl<'parse, P, F, T> ParseIter<'parse> for MapParseIter<'parse, P, F>
+impl<'parse, P, F> ParseIter<'parse> for MapParseIter<'parse, P, F>
 where
     P: Parser,
-    F: Fn(P::Output) -> T,
+    F: Mapping<P::RawOutput>,
 {
-    type RawOutput = (T,);
+    type RawOutput = F::RawOutput;
 
     fn match_end(&self) -> usize {
-        self.iter.match_end()
+        self.inner.match_end()
     }
 
     fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported> {
-        self.iter.backtrack(context)
+        self.inner.backtrack(context)
     }
 
-    fn into_raw_output(self) -> (T,) {
-        let value = (self.mapper)(self.iter.into_raw_output().into_user_type());
-        (value,)
+    fn into_raw_output(self) -> F::RawOutput {
+        let value = self.inner.into_raw_output();
+        self.mapper.apply(value)
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Skip;
+
+impl<T> Mapping<T> for Skip {
+    type RawOutput = ();
+    fn apply(&self, _value: T) {}
 }
 
 /// A parser that matches the same strings as `P` but after performing
@@ -66,110 +95,22 @@ where
 /// In `parser!(x:i32 delim y:i32 => Point(x, y))` we use a SkipParser to make
 /// sure `delim` doesn't produce a value, as we need exactly two values to pass
 /// to the mapper `|(x, y)| Point(x, y)`.
-#[derive(Debug, Clone, Copy)]
-pub struct SkipParser<P> {
-    inner: P,
-}
+pub type SkipParser<P> = MapParser<P, Skip>;
 
-#[derive(Debug, Clone, Copy)]
-pub struct SkipParseIter<Iter> {
-    inner: Iter,
-}
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SingleValue;
 
-impl<P> Parser for SkipParser<P>
-where
-    P: Parser,
-{
-    type Output = ();
-    type RawOutput = ();
-    type Iter<'parse> = SkipParseIter<P::Iter<'parse>> where P: 'parse;
+impl<T: ParserOutput> Mapping<T> for SingleValue {
+    type RawOutput = (T::UserType,);
 
-    fn parse_iter<'parse>(
-        &'parse self,
-        context: &mut crate::ParseContext<'parse>,
-        start: usize,
-    ) -> crate::error::Result<Self::Iter<'parse>, crate::Reported> {
-        let inner = self.inner.parse_iter(context, start)?;
-        Ok(SkipParseIter { inner })
-    }
-}
-
-impl<'parse, Iter> ParseIter<'parse> for SkipParseIter<Iter>
-where
-    Iter: ParseIter<'parse>,
-{
-    type RawOutput = ();
-
-    fn match_end(&self) -> usize {
-        self.inner.match_end()
-    }
-
-    fn backtrack(
-        &mut self,
-        context: &mut crate::ParseContext<'parse>,
-    ) -> crate::error::Result<(), crate::Reported> {
-        self.inner.backtrack(context)
-    }
-
-    fn into_raw_output(self) {
-        let _ = self.inner.into_raw_output();
+    fn apply(&self, value: T) -> Self::RawOutput {
+        (value.into_user_type(),)
     }
 }
 
 /// A parser that matches the same strings as `P` and has a singleton tuple as
 /// its RawOutput type.
-#[derive(Debug, Clone, Copy)]
-pub struct SingleValueParser<P> {
-    inner: P,
-}
-
-#[derive(Debug)]
-pub struct SingleValueParseIter<'parse, P>
-where
-    P: Parser + 'parse,
-{
-    inner: P::Iter<'parse>,
-}
-
-impl<P> Parser for SingleValueParser<P>
-where
-    P: Parser,
-{
-    type Output = P::Output;
-    type RawOutput = (P::Output,);
-    type Iter<'parse> = SingleValueParseIter<'parse, P> where P: 'parse;
-
-    fn parse_iter<'parse>(
-        &'parse self,
-        context: &mut crate::ParseContext<'parse>,
-        start: usize,
-    ) -> crate::error::Result<Self::Iter<'parse>, crate::Reported> {
-        let inner = self.inner.parse_iter(context, start)?;
-        Ok(SingleValueParseIter { inner })
-    }
-}
-
-impl<'parse, P> ParseIter<'parse> for SingleValueParseIter<'parse, P>
-where
-    P: Parser + 'parse,
-{
-    type RawOutput = (P::Output,);
-
-    fn match_end(&self) -> usize {
-        self.inner.match_end()
-    }
-
-    fn backtrack(
-        &mut self,
-        context: &mut crate::ParseContext<'parse>,
-    ) -> crate::error::Result<(), crate::Reported> {
-        self.inner.backtrack(context)
-    }
-
-    fn into_raw_output(self) -> Self::RawOutput {
-        (self.inner.into_raw_output().into_user_type(),)
-    }
-}
+pub type SingleValueParser<P> = MapParser<P, SingleValue>;
 
 /// Produce a new parser that behaves like this parser but additionally
 /// applies the given closure when producing the value.
@@ -209,20 +150,23 @@ where
     P: Parser,
     F: Fn(P::Output) -> T,
 {
-    MapParser { parser, mapper }
+    MapParser {
+        inner: parser,
+        mapper,
+    }
 }
 
 /// Return a parser that matches the same strings as `parser`, but after
 /// performing conversion just discards the values and returns `()`.
-///
-/// In `parser!(x:i32 delim y:i32 => Point(x, y))` we use `skip()` to make
-/// sure `delim` doesn't produce a value, as we need exactly two values to pass
-/// to the mapper `|(x, y)| Point(x, y)`.
+#[allow(dead_code)]
 pub fn skip<P>(parser: P) -> SkipParser<P>
 where
     P: Parser,
 {
-    SkipParser { inner: parser }
+    SkipParser {
+        inner: parser,
+        mapper: Skip,
+    }
 }
 
 /// Return a parser that matches the same strings as `parser` and has a
@@ -249,5 +193,8 @@ pub fn single_value<P>(parser: P) -> SingleValueParser<P>
 where
     P: Parser,
 {
-    SingleValueParser { inner: parser }
+    SingleValueParser {
+        inner: parser,
+        mapper: SingleValue,
+    }
 }

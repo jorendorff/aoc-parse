@@ -86,7 +86,7 @@ pub const any_char: CharParser = CharParser {
 /// value `0`-`9`.
 #[allow(non_upper_case_globals)]
 pub const digit: MapParser<CharParser, fn(char) -> usize> = MapParser {
-    parser: CharParser {
+    inner: CharParser {
         noun: "decimal digit",
         predicate: |c| c.is_ascii_digit(),
     },
@@ -97,7 +97,7 @@ pub const digit: MapParser<CharParser, fn(char) -> usize> = MapParser {
 /// `0` or `1`.
 #[allow(non_upper_case_globals)]
 pub const digit_bin: MapParser<CharParser, fn(char) -> usize> = MapParser {
-    parser: CharParser {
+    inner: CharParser {
         noun: "hexadecimal digit",
         predicate: |c| c.is_digit(2),
     },
@@ -108,7 +108,7 @@ pub const digit_bin: MapParser<CharParser, fn(char) -> usize> = MapParser {
 /// converts it to its integer value `0`-`15`.
 #[allow(non_upper_case_globals, clippy::is_digit_ascii_radix)]
 pub const digit_hex: MapParser<CharParser, fn(char) -> usize> = MapParser {
-    parser: CharParser {
+    inner: CharParser {
         noun: "hexadecimal digit",
         predicate: |c| c.is_digit(16),
     },

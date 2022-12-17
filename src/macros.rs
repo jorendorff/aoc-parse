@@ -1,6 +1,4 @@
-pub use crate::parsers::{
-    alt, empty, lines, map, opt, pair, plus, sequence, single_value, skip, star,
-};
+pub use crate::parsers::{alt, empty, lines, map, opt, pair, plus, sequence, single_value, star};
 
 /// Macro that creates a parser for a given pattern.
 ///
