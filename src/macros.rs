@@ -24,10 +24,9 @@ pub use crate::parsers::{alt, empty, lines, map, opt, pair, plus, sequence, sing
 ///   | term "?"                -- optional
 ///
 /// prim ::= "(" expr ")"
-///   | "(" ident ":" expr ")"  -- labeled subpattern
 ///   | ident "(" expr,* ")"    -- function call
 ///   | ident                   -- named parser (when not followed by `(`)
-///   | literal                 -- exact string
+///   | literal                 -- exact char or string
 ///   | "{" expr,* "}"          -- one-of syntax
 ///
 /// ident ::= a Rust identifier
