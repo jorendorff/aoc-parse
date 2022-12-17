@@ -356,7 +356,7 @@ pub use error::ParseError;
 use error::Result;
 pub use traits::{ParseIter, Parser};
 
-/// A giant sack of toys and goodies to import along with `Parser`.
+/// A giant sack of toys and goodies to import along with `parser!`.
 ///
 /// The `parser!()` macro will work fine without this, so you can explicitly
 /// import the names you want to use instead of doing `use aoc_parse::{parser,
