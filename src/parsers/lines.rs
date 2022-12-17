@@ -11,12 +11,15 @@ use crate::{
 /// This is implemented for `Line` and `Section`, the two region types.
 pub trait Region: Copy + Clone {
     /// True if `start` is an offset within `source` that's the start of this
-    /// type of region. Caller promises that `start` is at least in bounds and
-    /// a character boundary in `source`.
+    /// type of region.
+    ///
+    /// # Panics
+    ///
+    /// This can panic if `start` is not a character boundary in `source`.
     fn check_at_start(context: &mut ParseContext, start: usize) -> Result<(), Reported>;
 
-    /// If a suitable end is found for this region (`'\n'` for a line, `"\n\n"`
-    /// or `/\n\Z/` for a section) then return a pair of
+    /// If a suitable end is found for this region (`'\n'` or `/\Z/` for a line, `/^\n/`
+    /// or `/\Z/` for a section) then return a pair of
     ///
     /// -   the end of the interior of the region, for the purpose of parsing the
     ///     interior; and
@@ -24,6 +27,9 @@ pub trait Region: Copy + Clone {
     ///     we consumed on a successful parse.
     fn find_end(context: &mut ParseContext, start: usize) -> Result<(usize, usize), Reported>;
 
+    /// Report an error to `context` indicating that we found a region and
+    /// matched the text of the region to the expected subpattern, but the
+    /// match doesn't cover the entire region.
     fn report_incomplete_match(context: &mut ParseContext, end: usize) -> Reported;
 }
 
