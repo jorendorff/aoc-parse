@@ -1,7 +1,7 @@
 //! Alternation.
 
 use crate::{
-    parsers::{map, MapParser},
+    parsers::{empty, map, EmptyParser, MapParser},
     types::ParserOutput,
     ParseContext, ParseIter, Parser, Reported, Result,
 };
@@ -96,7 +96,8 @@ pub fn either<A, B>(left: A, right: B) -> EitherParser<A, B> {
     EitherParser { left, right }
 }
 
-pub type AltParser<A, B, T> = MapParser<EitherParser<A, B>, fn(Either<T, T>) -> T>;
+pub type AltParser<A, B, T> =
+    MapParser<EitherParser<A, B>, fn(Either<<A as Parser>::Output, <B as Parser>::Output>) -> T>;
 
 // Used by the `parser!()` macro to implement `{p1, p2, ...}` syntax.
 #[doc(hidden)]
@@ -108,5 +109,19 @@ where
     map(either(left, right), |out| match out {
         Either::Left(value) => value,
         Either::Right(value) => value,
+    })
+}
+
+pub type OptParser<P> = AltParser<P, EmptyParser, Option<<P as Parser>::Output>>;
+
+/// Used by the `parser!()` macro to implement the `?` quantifier.
+#[doc(hidden)]
+pub fn opt<P>(pattern: P) -> OptParser<P>
+where
+    P: Parser,
+{
+    map(either(pattern, empty()), |e| match e {
+        Either::Left(left) => Some(left),
+        Either::Right(()) => None,
     })
 }

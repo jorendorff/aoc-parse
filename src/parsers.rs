@@ -1,5 +1,3 @@
-use crate::Parser;
-
 mod chars;
 mod either;
 mod empty;
@@ -14,7 +12,7 @@ mod string;
 
 pub use self::regex::RegexParser;
 pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, upper};
-pub use either::{alt, either, AltParser, Either, EitherParser};
+pub use either::{alt, either, opt, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};
 pub use map::{map, single_value, skip, MapParser};
@@ -29,17 +27,6 @@ pub use sequence::{pair, sequence, SequenceParser};
 pub use string::StringParser;
 
 // --- Wrappers
-
-// Used by the `parser!()` macro to implement the `?` quantifier.
-#[doc(hidden)]
-pub fn opt<T>(
-    pattern: impl Parser<Output = T> + 'static,
-) -> impl Parser<Output = Option<T>, RawOutput = (Option<T>,)> {
-    map(either(pattern, empty()), |e: Either<T, ()>| match e {
-        Either::Left(left) => Some(left),
-        Either::Right(()) => None,
-    })
-}
 
 #[cfg(test)]
 mod tests {
