@@ -3,22 +3,52 @@ use std::{num::ParseIntError, str::FromStr};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::parsers::regex::RegexParser;
+use crate::{ParseIter, ParseContext, Reported, parsers::regex::RegexParser};
 
-// --- Default parsers for some types that implement FromStr
+/// A trivial ParseIter that presents exactly one match and holds a
+/// pre-converted value.
+///
+/// Some parsers, like `u64`, do all the work of conversion as part of
+/// confirming that a match is valid. Rather than do the work again during the
+/// `convert` phase, the answer is stored in this iterator.
+pub struct BasicParseIter<T> {
+    pub(crate) end: usize,
+    pub(crate) value: T,
+}
+
+impl<'parse, T> ParseIter<'parse> for BasicParseIter<T>
+where
+    T: Clone,
+{
+    type RawOutput = (T,);
+
+    fn match_end(&self) -> usize {
+        self.end
+    }
+
+    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
+        Err(Reported)
+    }
+
+    fn convert(&self) -> (T,) {
+        (self.value.clone(),)
+    }
+}
+
+// --- Global regexes that are compiled on first use
 
 macro_rules! regexes {
-        ( $( $name:ident = $re:expr ; )* ) => {
-            $(
-                pub(crate) fn $name() -> &'static Regex {
-                    lazy_static! {
-                        static ref RE: Regex = Regex::new($re).unwrap();
-                    }
-                    &RE
+    ( $( $name:ident = $re:expr ; )* ) => {
+        $(
+            pub(crate) fn $name() -> &'static Regex {
+                lazy_static! {
+                    static ref RE: Regex = Regex::new($re).unwrap();
                 }
-            )*
-        }
+                &RE
+            }
+        )*
     }
+}
 
 regexes! {
     uint_regex = r"\A[0-9]+";
@@ -29,6 +59,8 @@ regexes! {
     uint_hex_regex = r"\A[0-9A-Fa-f]+";
     int_hex_regex = r"\A[+-]?[0-9A-Fa-f]+";
 }
+
+// --- Parsers that use FromStr
 
 macro_rules! from_str_parse_impl {
         ( $( $ty:ident )+ , $re_name:ident) => {
@@ -48,6 +80,8 @@ macro_rules! from_str_parse_impl {
 from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex);
 from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
 from_str_parse_impl!(bool, bool_regex);
+
+// --- Parsers for `_bin` and `_hex` integers
 
 macro_rules! from_str_radix_parsers {
     ( $( ( $ty:ident , $bin:ident , $hex:ident ) ),* ; $bin_re:ident, $hex_re:ident ) => {

@@ -7,7 +7,7 @@ use std::{
 
 use regex::Regex;
 
-use crate::{ParseContext, ParseIter, Parser, Reported, Result};
+use crate::{parsers::BasicParseIter, ParseContext, Parser, Reported, Result};
 
 /// This parser matches using a regex, then converts the value to a Rust value
 /// using the given `parse_fn`.
@@ -39,11 +39,6 @@ impl<T, E> Clone for RegexParser<T, E> {
 
 impl<T, E> Copy for RegexParser<T, E> {}
 
-pub struct RegexParseIter<T> {
-    end: usize,
-    value: T,
-}
-
 impl<T, E> Parser for RegexParser<T, E>
 where
     T: Any + Clone,
@@ -51,7 +46,7 @@ where
 {
     type Output = T;
     type RawOutput = (T,);
-    type Iter<'parse> = RegexParseIter<T>
+    type Iter<'parse> = BasicParseIter<T>
     where
         E: 'parse;
 
@@ -63,7 +58,7 @@ where
         match (self.regex)().find(&context.source()[start..]) {
             None => Err(context.error_expected(start, any::type_name::<T>())),
             Some(m) => match (self.parse_fn)(m.as_str()) {
-                Ok(value) => Ok(RegexParseIter {
+                Ok(value) => Ok(BasicParseIter {
                     end: start + m.end(),
                     value,
                 }),
@@ -75,21 +70,5 @@ where
                 )),
             },
         }
-    }
-}
-
-impl<'parse, T> ParseIter<'parse> for RegexParseIter<T>
-where
-    T: Clone,
-{
-    type RawOutput = (T,);
-    fn match_end(&self) -> usize {
-        self.end
-    }
-    fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
-        Err(Reported)
-    }
-    fn convert(&self) -> (T,) {
-        (self.value.clone(),)
     }
 }
