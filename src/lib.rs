@@ -96,18 +96,6 @@
 //! *   `bool` - Matches either `true` or `false` and converts it to the
 //!     corresponding `bool` value.
 //!
-//! *   `alpha`, `alnum`, `upper`, `lower` - Match single characters of
-//!     various categories. (These use the Unicode categories, even though
-//!     Advent of Code historically sticks to ASCII.)
-//!
-//! *   `digit`, `digit_bin`, `digit_hex` - Match a single ASCII character
-//!     that's a digit in base 10, base 2, or base 16, respectively.
-//!     The digit is converted to its numeric value, as a `usize`.
-//!
-//! *   `any_char`: Match the next character, no matter what it is (like `.`
-//!     in a regular expression, except that `any_char` matches newline
-//!     characters).
-//!
 //! *   `'x'` or `"hello"` - A Rust character or string, in quotes, is a pattern
 //!     that matches that exact text only.
 //!
@@ -135,13 +123,6 @@
 //!
 //!     An identifier can also refer to a string or character constant.
 //!
-//! *   <code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
-//!     but instead of converting it to some value, simply return the matched
-//!     characters as a `String`.
-//!
-//!     By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy
-//!     in AoC, but often it's better to have it return a `String`.
-//!
 //! Repeating patterns:
 //!
 //! *   <code><var>pattern</var>*</code> - Any pattern followed by an asterisk
@@ -163,6 +144,35 @@
 //!     Match the given *pattern* any number of times, separated by the *separator*.
 //!     This converts only the bits that match *pattern* to Rust values, producing
 //!     a `Vec`. Any parts of the string matched by *separator* are not converted.
+//!
+//! Matching single characters:
+//!
+//! *   `alpha`, `alnum`, `upper`, `lower` - Match single characters of
+//!     various categories. (These use the Unicode categories, even though
+//!     Advent of Code historically sticks to ASCII.)
+//!
+//! *   `digit`, `digit_bin`, `digit_hex` - Match a single ASCII character
+//!     that's a digit in base 10, base 2, or base 16, respectively.
+//!     The digit is converted to its numeric value, as a `usize`.
+//!
+//! *   `any_char` - Match the next character, no matter what it is (like `.`
+//!     in a regular expression, except that `any_char` matches newline
+//!     characters too).
+//!
+//! *   <code>char_of(<var>str</var>)</code> - Match the next character if it's
+//!     one of the characters in *str*. For example, `char_of(">^<v")` matches
+//!     exactly one character, either `>`, `^`, `<`, or `v`. Returns the index
+//!     of the character within the list of options (in this case, `0`, `1`,
+//!     `2`, or `3`).
+//!
+//! Matching multiple characters:
+//!
+//! *   <code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
+//!     but instead of converting it to some value, simply return the matched
+//!     characters as a `String`.
+//!
+//!     By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy
+//!     in AoC, but often it's better to have it return a `String`.
 //!
 //! Custom conversion:
 //!
@@ -371,10 +381,11 @@ pub mod prelude {
     pub use crate::util::aoc_parse;
 
     pub use crate::parsers::{
-        alnum, alpha, any_char, bool, digit, digit_bin, digit_hex, i128, i128_bin, i128_hex, i16,
-        i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin, i8_hex, isize,
-        isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin, u16_hex, u32, u32_bin,
-        u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize, usize_bin, usize_hex,
+        alnum, alpha, any_char, bool, char_of, digit, digit_bin, digit_hex, i128, i128_bin,
+        i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin,
+        i8_hex, isize, isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin,
+        u16_hex, u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize,
+        usize_bin, usize_hex,
     };
 
     pub use crate::parsers::{line, lines, repeat_sep, section, sections};

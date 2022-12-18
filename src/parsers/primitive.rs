@@ -3,7 +3,7 @@ use std::{num::ParseIntError, str::FromStr};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::{ParseIter, ParseContext, Reported, parsers::regex::RegexParser};
+use crate::{parsers::regex::RegexParser, ParseContext, ParseIter, Reported};
 
 /// A trivial ParseIter that presents exactly one match and holds a
 /// pre-converted value.

@@ -11,7 +11,7 @@ mod sequence;
 mod string;
 
 pub use self::regex::RegexParser;
-pub use chars::{alnum, alpha, any_char, digit, digit_bin, digit_hex, lower, upper};
+pub use chars::{alnum, alpha, any_char, char_of, digit, digit_bin, digit_hex, lower, upper};
 pub use either::{alt, either, opt, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};
