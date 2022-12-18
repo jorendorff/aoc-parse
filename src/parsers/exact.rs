@@ -54,7 +54,7 @@ impl<'parse> ParseIter<'parse> for ExactParseIter {
     fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         Err(Reported)
     }
-    fn into_raw_output(self) {}
+    fn convert(&self) {}
 }
 
 #[cfg(test)]

@@ -206,11 +206,11 @@ where
         self.next(context, Mode::BacktrackTopIter)
     }
 
-    fn into_raw_output(self) -> (Vec<Pattern::Output>,) {
+    fn convert(&self) -> (Vec<Pattern::Output>,) {
         let v = self
             .pattern_iters
-            .into_iter()
-            .map(|iter| iter.into_raw_output().into_user_type())
+            .iter()
+            .map(|iter| iter.convert().into_user_type())
             .collect();
         (v,)
     }

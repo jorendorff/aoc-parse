@@ -33,7 +33,7 @@ pub struct RegexParseIter<T> {
 
 impl<T, E> Parser for RegexParser<T, E>
 where
-    T: Any,
+    T: Any + Clone,
     E: Display,
 {
     type Output = T;
@@ -65,7 +65,10 @@ where
     }
 }
 
-impl<'parse, T> ParseIter<'parse> for RegexParseIter<T> {
+impl<'parse, T> ParseIter<'parse> for RegexParseIter<T>
+where
+    T: Clone,
+{
     type RawOutput = (T,);
     fn match_end(&self) -> usize {
         self.end
@@ -73,7 +76,7 @@ impl<'parse, T> ParseIter<'parse> for RegexParseIter<T> {
     fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         Err(Reported)
     }
-    fn into_raw_output(self) -> (T,) {
-        (self.value,)
+    fn convert(&self) -> (T,) {
+        (self.value.clone(),)
     }
 }

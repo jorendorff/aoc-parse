@@ -63,7 +63,7 @@ pub trait Parser {
                 return Err(ctx.into_reported_error());
             }
         }
-        Ok(it.into_raw_output())
+        Ok(it.convert())
     }
 }
 
@@ -91,8 +91,8 @@ pub trait ParseIter<'parse> {
     /// Once this returns `false`, no more method calls should be made.
     fn backtrack(&mut self, context: &mut ParseContext<'parse>) -> Result<(), Reported>;
 
-    /// Consume this iterator to extract data.
-    fn into_raw_output(self) -> Self::RawOutput;
+    /// Convert the matched text to a Rust value.
+    fn convert(&self) -> Self::RawOutput;
 }
 
 impl<'a, P> Parser for &'a P

@@ -130,9 +130,9 @@ where
         })
     }
 
-    fn into_raw_output(self) -> Self::RawOutput {
-        let head = self.head_iter.into_raw_output();
-        let tail = self.tail_iter.into_raw_output();
+    fn convert(&self) -> Self::RawOutput {
+        let head = self.head_iter.convert();
+        let tail = self.tail_iter.convert();
         Op::apply(head, tail)
     }
 }

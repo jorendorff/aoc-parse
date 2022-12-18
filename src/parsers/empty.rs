@@ -31,7 +31,7 @@ impl<'parse> ParseIter<'parse> for EmptyParseIter {
     fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         Err(Reported)
     }
-    fn into_raw_output(self) -> Self::RawOutput {}
+    fn convert(&self) -> Self::RawOutput {}
 }
 
 /// Used by the `parser!()` macro to implement the empty pattern, `()`.

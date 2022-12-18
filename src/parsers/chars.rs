@@ -41,7 +41,7 @@ impl<'parse> ParseIter<'parse> for CharParseIter {
     fn backtrack(&mut self, _context: &mut ParseContext<'parse>) -> Result<(), Reported> {
         Err(Reported)
     }
-    fn into_raw_output(self) -> (char,) {
+    fn convert(&self) -> (char,) {
         (self.c,)
     }
 }

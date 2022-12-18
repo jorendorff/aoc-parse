@@ -54,7 +54,7 @@ where
         self.iter.backtrack(context)
     }
 
-    fn into_raw_output(self) -> (String,) {
+    fn convert(&self) -> (String,) {
         let end = self.iter.match_end();
         let value = self.source[self.start..end].to_string();
         (value,)

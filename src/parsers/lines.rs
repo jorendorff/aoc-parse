@@ -176,8 +176,8 @@ where
         Err(Reported)
     }
 
-    fn into_raw_output(self) -> Self::RawOutput {
-        let v = self.iter.into_raw_output().into_user_type();
+    fn convert(&self) -> Self::RawOutput {
+        let v = self.iter.convert().into_user_type();
         (v,)
     }
 }

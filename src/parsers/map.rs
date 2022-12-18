@@ -75,8 +75,8 @@ where
         self.inner.backtrack(context)
     }
 
-    fn into_raw_output(self) -> F::RawOutput {
-        let value = self.inner.into_raw_output();
+    fn convert(&self) -> F::RawOutput {
+        let value = self.inner.convert();
         self.mapper.apply(value)
     }
 }
