@@ -9,6 +9,19 @@ use regex::Regex;
 
 use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
+/// This parser matches using a regex, then converts the value to a Rust value
+/// using the given `parse_fn`.
+///
+/// Each time this parser is used, either it finds a regex match and `parse_fn`
+/// succeeds, or it fails to match. For example, if `regex` is `/\w+/` and the
+/// input is "hello world", if the RegexParser is invoked at start offset 0, it
+/// either matches `"hello"` or doesn't match at all. It never falls back on
+/// `"hell"` or `"h"`, even though those are both valid (shorter) regex
+/// matches.
+///
+/// This means `sequence(/[a-z]+/, 'a')` will not match `"cba"` (or any other
+/// string) because the regex matches all lowercase letters, leaving nothing
+/// for the next pattern `'a'` to match.
 pub struct RegexParser<T, E> {
     pub(crate) regex: fn() -> &'static Regex,
     pub(crate) parse_fn: fn(&str) -> Result<T, E>,
