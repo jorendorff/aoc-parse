@@ -130,6 +130,12 @@ fn test_repeat() {
 }
 
 #[test]
+fn test_repeat_sep() {
+    let p = parser!("lucky numbers: " (u32 ", ")* u32);
+    assert_parse_error(p, "lucky numbers: ", "expected u32");
+}
+
+#[test]
 fn test_alt_tuple() {
     // Tuples returned by an alternation don't get concatenated with other
     // nearby terms.
@@ -189,7 +195,7 @@ fn test_chars() {
     assert_parse_eq(parser!('A' 'b' 'c'), "Abc", ());
     assert_no_parse(parser!('Q'), "q");
 
-    assert_parse_error(parser!('\n'), "q", r#"expected "\n" at"#);
+    assert_parse_error(parser!('\n'), "q", r#"expected '\n' at"#);
 
     let p = parser!(a:alpha+ => a.into_iter().collect::<String>());
     assert_no_parse(p, "");

@@ -12,7 +12,7 @@ enum ParseErrorReason {
     LineExtra,
     #[error("section(pattern) matched part of the section, but not all of it")]
     SectionExtra,
-    #[error("expected {0:?}")]
+    #[error("expected {0}")]
     Expected(String),
     #[error("failed to parse {input:?} as type {type_name}: {message}")]
     FromStrFailed {

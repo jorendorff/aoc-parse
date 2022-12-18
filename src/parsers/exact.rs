@@ -21,7 +21,7 @@ impl Parser for str {
                 end: start + self.len(),
             })
         } else {
-            Err(context.error_expected(start, self))
+            Err(context.error_expected(start, &format!("{self:?}")))
         }
     }
 }
@@ -41,7 +41,7 @@ impl Parser for char {
                 end: start + self.len_utf8(),
             })
         } else {
-            Err(context.error_expected(start, &self.to_string()))
+            Err(context.error_expected(start, &format!("{self:?}")))
         }
     }
 }
@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn test_exact_char_errors() {
         let p = '\n';
-        assert_parse_error(&p, "q", r#"expected "\n" at"#);
-        assert_parse_error(&p, "", r#"expected "\n" at end"#);
+        assert_parse_error(&p, "q", r#"expected '\n' at"#);
+        assert_parse_error(&p, "", r#"expected '\n' at end"#);
     }
 }
