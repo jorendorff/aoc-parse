@@ -1,7 +1,6 @@
 use crate::parsers::MapParser;
 use crate::{ParseContext, ParseIter, Parser, Reported, Result};
 
-#[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct CharParser {
     noun: &'static str,
