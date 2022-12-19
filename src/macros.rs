@@ -48,7 +48,9 @@
 //! //      ^ERROR: call expression requires function
 //! ```
 
-pub use crate::parsers::{alt, empty, lines, map, opt, pair, plus, sequence, single_value, star};
+pub use crate::parsers::{
+    alt, empty, lines, map, opt, pair, plus, sequence, single_value, star,
+};
 
 /// Macro that creates a parser for a given pattern.
 ///

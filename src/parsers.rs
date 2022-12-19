@@ -1,4 +1,5 @@
 mod chars;
+mod dynamic;
 mod either;
 mod empty;
 mod exact;
