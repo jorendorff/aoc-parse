@@ -301,13 +301,16 @@
 //!     );
 //!
 //!     assert!(p.parse("px(fo(i)(RR(c)))j(Q)zww\n").is_ok());
-//!     assert!(p.parse("x)fo\n").is_err());
+//!
+//!     assert!(p.parse("x(fo))\n").is_err());  // parens not balanced
 //!     ```
 //!
 //!     Ordinarily `let` suffices for parsers used by other parsers; but `rule`
 //!     is needed for parsers that refer to themselves or to each other,
 //!     cyclically, like `formation` and `stack` above. Rust's `let` doesn't
 //!     support that.
+//!
+//!     Note: Left-recursive grammars don't work, as usual for PEG parsers.
 //!
 //! Lines and sections:
 //!
