@@ -1,6 +1,8 @@
 use std::{num::ParseIntError, str::FromStr};
 
 use lazy_static::lazy_static;
+use num_bigint::{BigInt, BigUint, ParseBigIntError};
+use num_traits::Num;
 use regex::Regex;
 
 use crate::{parsers::regex::RegexParser, ParseContext, ParseIter, Reported};
@@ -81,6 +83,23 @@ from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex);
 from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
 from_str_parse_impl!(bool, bool_regex);
 
+/// Parse a BigUint (using its `FromStr` implementation in the `num-bigint`
+/// crate, except that underscores between digits are not accepted and a
+/// leading `+` sign is not accepted).
+#[allow(non_upper_case_globals)]
+pub const big_uint: RegexParser<BigUint, <BigUint as FromStr>::Err> = RegexParser {
+    regex: uint_regex,
+    parse_fn: <BigUint as FromStr>::from_str,
+};
+
+/// Parse a BigInt (using its `FromStr` implementation in the `num-bigint`
+/// crate, except that underscores between digits are not accepted).
+#[allow(non_upper_case_globals)]
+pub const big_int: RegexParser<BigInt, <BigInt as FromStr>::Err> = RegexParser {
+    regex: int_regex,
+    parse_fn: <BigInt as FromStr>::from_str,
+};
+
 // --- Parsers for `_bin` and `_hex` integers
 
 macro_rules! from_str_radix_parsers {
@@ -101,7 +120,6 @@ macro_rules! from_str_radix_parsers {
                 regex: $hex_re,
                 parse_fn: |s| $ty::from_str_radix(s, 16),
             };
-
         )*
     }
 }
@@ -127,6 +145,42 @@ from_str_radix_parsers!(
     int_bin_regex,
     int_hex_regex
 );
+
+/// Parse a [`BigUint`] written in base 2 (using its [`Num`] impl from the
+/// `num-bigint` crate, except that underscores between digits are not
+/// accepted and a leading `+` sign is not accepted).
+#[allow(non_upper_case_globals)]
+pub const big_uint_bin: RegexParser<BigUint, ParseBigIntError> = RegexParser {
+    regex: uint_bin_regex,
+    parse_fn: |s| BigUint::from_str_radix(s, 2),
+};
+
+/// Parse a [`BigUint`] written in base 16 (using its [`Num`] impl from the
+/// `num-bigint` crate, except that underscores between digits are not
+/// accepted and a leading `+` sign is not accepted).
+#[allow(non_upper_case_globals)]
+pub const big_uint_hex: RegexParser<BigUint, ParseBigIntError> = RegexParser {
+    regex: uint_hex_regex,
+    parse_fn: |s| BigUint::from_str_radix(s, 16),
+};
+
+/// Parse a [`BigInt`] written in base 2 (using its [`Num`] impl from the
+/// `num-bigint` crate, except that underscores between digits are not
+/// accepted).
+#[allow(non_upper_case_globals)]
+pub const big_int_bin: RegexParser<BigInt, ParseBigIntError> = RegexParser {
+    regex: int_bin_regex,
+    parse_fn: |s| BigInt::from_str_radix(s, 2),
+};
+
+/// Parse a [`BigInt`] written in base 16 (using its [`Num`] impl from the
+/// `num-bigint` crate, except that underscores between digits are not
+/// accepted).
+#[allow(non_upper_case_globals)]
+pub const big_int_hex: RegexParser<BigInt, ParseBigIntError> = RegexParser {
+    regex: int_hex_regex,
+    parse_fn: |s| BigInt::from_str_radix(s, 16),
+};
 
 #[cfg(test)]
 mod tests {
@@ -169,5 +223,45 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000000ffffffff",
             u32::MAX,
         );
+    }
+
+    #[test]
+    fn test_bigint() {
+        assert_no_parse(big_uint, "");
+        assert_no_parse(big_uint, "+");
+        assert_no_parse(big_uint, "+11");
+        assert_no_parse(big_uint, "-");
+        assert_parse_eq(big_uint, "0", BigUint::default());
+        assert_parse_eq(
+            big_uint,
+            "982371952794802135871309821709317509287109324809324983409383209484381293480",
+            "982371952794802135871309821709317509287109324809324983409383209484381293480"
+                .parse::<BigUint>()
+                .unwrap(),
+        );
+
+        assert_no_parse(big_int, "");
+        assert_no_parse(big_int, "+");
+        assert_no_parse(big_int, "-");
+        assert_parse_eq(big_int, "-0", BigInt::default());
+        assert_parse_eq(big_int, "+0", BigInt::default());
+        assert_parse_eq(big_int, "00", BigInt::default());
+        assert_no_parse(big_int, "-+31");
+        assert_no_parse(big_int, " 0");
+        assert_parse_eq(
+            big_int,
+            "-4819487135612398473187093223859843207984094321710984370927309128460723598212",
+            "-4819487135612398473187093223859843207984094321710984370927309128460723598212".parse::<BigInt>().unwrap(),
+        );
+
+        assert_parse_eq(
+            big_uint_hex,
+            "0000000000000000000000000000000000000000000000000000000000000000ffffffff",
+            BigUint::from(u32::MAX),
+        );
+        assert_no_parse(big_uint_hex, "13a4g3");
+        assert_no_parse(big_uint_bin, "1001012");
+        assert_no_parse(big_int_hex, "13A4G3");
+        assert_no_parse(big_int_bin, "1001012");
     }
 }

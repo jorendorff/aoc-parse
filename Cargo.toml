@@ -13,6 +13,7 @@ keywords = ["aoc", "parse", "puzzle", "parser", "advent"]
 [dependencies]
 lazy_static = "1.4"
 num-bigint = "0.4"
+num-traits = "0.2"
 regex = "1"
 thiserror = "1"
 tuple_utils = "0.4"

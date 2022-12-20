@@ -75,7 +75,7 @@
 //!
 //! Here are the pieces that you can use in a pattern:
 //!
-//! *   `i8`, `i16`, `i32`, `i64`, `i128`, `isize` - These match an integer,
+//! *   `i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `big_int` - These match an integer,
 //!     written out using decimal digits, with an optional `+` or `-` sign
 //!     at the start, like `0` or `-11474`.
 //!
@@ -83,13 +83,15 @@
 //!     type you chose. For example, `parser!(i8).parse("1000")` is an error.
 //!     (It matches the string, but fails during the "convert" phase.)
 //!
-//! *   `u8`, `u16`, `u32`, `u64`, `u128`, `usize` - The same, but without
-//!     the sign.
+//!     `big_int` parses a [`num_bigint::BigInt`].
 //!
-//! *   `i8_bin`, `i16_bin`, `i32_bin`, `i64_bin`, `i128_bin`, `isize_bin`,
-//!     `u8_bin`, `u16_bin`, `u32_bin`, `u64_bin`, `u128_bin`, `usize_bin`,
-//!     `i8_hex`, `i16_hex`, `i32_hex`, `i64_hex`, `i128_hex`, `isize_hex`,
-//!     `u8_hex`, `u16_hex`, `u32_hex`, `u64_hex`, `u128_hex`, `usize_hex` -
+//! *   `u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `big_uint` - The same, but
+//!     without the sign.
+//!
+//! *   `i8_bin`, `i16_bin`, `i32_bin`, `i64_bin`, `i128_bin`, `isize_bin`, `big_int_bin`,
+//!     `u8_bin`, `u16_bin`, `u32_bin`, `u64_bin`, `u128_bin`, `usize_bin`, `big_uint_bin`,
+//!     `i8_hex`, `i16_hex`, `i32_hex`, `i64_hex`, `i128_hex`, `isize_hex`, `big_int_hex`,
+//!     `u8_hex`, `u16_hex`, `u32_hex`, `u64_hex`, `u128_hex`, `usize_hex`, `big_uint_hex` -
 //!     Match an integer in base 2 or base 16. The `_hex` parsers allow both
 //!     uppercase and lowercase digits `A`-`F`.
 //!
@@ -381,11 +383,11 @@ pub mod prelude {
     pub use crate::util::aoc_parse;
 
     pub use crate::parsers::{
-        alnum, alpha, any_char, bool, char_of, digit, digit_bin, digit_hex, i128, i128_bin,
-        i128_hex, i16, i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin,
-        i8_hex, isize, isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin,
-        u16_hex, u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize,
-        usize_bin, usize_hex,
+        alnum, alpha, any_char, big_int, big_int_bin, big_int_hex, big_uint, big_uint_bin,
+        big_uint_hex, bool, char_of, digit, digit_bin, digit_hex, i128, i128_bin, i128_hex, i16,
+        i16_bin, i16_hex, i32, i32_bin, i32_hex, i64, i64_bin, i64_hex, i8, i8_bin, i8_hex, isize,
+        isize_bin, isize_hex, lower, u128, u128_bin, u128_hex, u16, u16_bin, u16_hex, u32, u32_bin,
+        u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, upper, usize, usize_bin, usize_hex,
     };
 
     pub use crate::parsers::{line, lines, repeat_sep, section, sections};
