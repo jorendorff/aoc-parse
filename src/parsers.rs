@@ -8,6 +8,7 @@ mod map;
 mod primitive;
 mod regex;
 mod repeat;
+mod rule_set;
 mod sequence;
 mod string;
 
@@ -25,6 +26,7 @@ pub use primitive::{
     BasicParseIter,
 };
 pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
+pub use rule_set::{RuleSetBuilder, RuleParser, RuleSetParser};
 pub use sequence::{pair, sequence, SequenceParser};
 pub use string::StringParser;
 

@@ -1,5 +1,7 @@
 //! Mainly error tracking for the overall parse.
 
+use std::{any::Any, collections::HashMap};
+
 use crate::ParseError;
 
 /// Error type for when an error has been reported to ParseContext.
@@ -65,6 +67,7 @@ pub struct Reported;
 pub struct ParseContext<'parse> {
     source: &'parse str,
     foremost_error: Option<ParseError>,
+    rule_sets: HashMap<usize, &'parse [Box<dyn Any>]>,
 }
 
 impl<'parse> ParseContext<'parse> {
@@ -73,6 +76,7 @@ impl<'parse> ParseContext<'parse> {
         ParseContext {
             source,
             foremost_error: None,
+            rule_sets: HashMap::new(),
         }
     }
 
@@ -136,6 +140,15 @@ impl<'parse> ParseContext<'parse> {
     /// Record an "extra unparsed text after match" error.
     pub fn error_extra(&mut self, location: usize) -> Reported {
         self.report(ParseError::new_extra(self.source(), location))
+    }
+
+    pub(crate) fn register_rule_set(&mut self, rule_set_id: usize, rule_parsers: &'parse [Box<dyn Any>]) {
+        self.rule_sets.insert(rule_set_id, rule_parsers);
+    }
+
+    pub(crate) fn fetch_parser_for_rule(&self, rule_set_id: usize, index: usize) -> &'parse dyn Any {
+        let rule_parsers: &'parse [Box<dyn Any>] = self.rule_sets.get(&rule_set_id).expect("internal error: rule set not registered");
+        &*rule_parsers[index]
     }
 }
 

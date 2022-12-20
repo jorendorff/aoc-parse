@@ -50,6 +50,7 @@
 
 pub use crate::parsers::{
     alt, empty, lines, map, opt, pair, plus, sequence, single_value, star,
+    RuleSetBuilder,
 };
 
 /// Macro that creates a parser for a given pattern.
