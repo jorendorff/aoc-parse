@@ -270,6 +270,45 @@
 //!     }));
 //!     ```
 //!
+//! Rule sets:
+//!
+//! *   <code>rule <var>name1</var>: <var>type1</var> = <var>pattern1</var>;</code> -
+//!     Introduce a "rule", a named subparser.
+//!
+//!     This supports parsing text with nesting brackets.
+//!
+//!     ```
+//!     # use aoc_parse::{parser, prelude::*};
+//!     enum Formation {
+//!         Elf(char),
+//!         Stack(Vec<Formation>),
+//!     }
+//!
+//!     let p = parser!(
+//!         // First rule: A "formation" has return type Formation and is either
+//!         // a letter or a stack.
+//!         rule formation: Formation = {
+//!             s:alpha => Formation::Elf(s),
+//!             v:stack => Formation::Stack(v),
+//!         };
+//!
+//!         // Second rule: A "stack" is one or more formations, wrapped in
+//!         // matching parentheses.
+//!         rule stack: Vec<Formation> = '(' v:formation+ ')' => v;
+//!
+//!         // After all rules, the pattern that .parse() will actually match.
+//!         lines(formation+)
+//!     );
+//!
+//!     assert!(p.parse("px(fo(i)(RR(c)))j(Q)zww\n").is_ok());
+//!     assert!(p.parse("x)fo\n").is_err());
+//!     ```
+//!
+//!     Ordinarily `let` suffices for parsers used by other parsers; but `rule`
+//!     is needed for parsers that refer to themselves or to each other,
+//!     cyclically, like `formation` and `stack` above. Rust's `let` doesn't
+//!     support that.
+//!
 //! Lines and sections:
 //!
 //! *   <code>line(<var>pattern</var>)</code> - Matches a single line of text that
