@@ -124,3 +124,31 @@ fn day7() {
         vec![16, 1, 2, 0, 4, 2, 7, 1, 2, 14],
     );
 }
+
+#[test]
+fn day8() {
+    let input = "\
+be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
+edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc
+fgaebd cg bdaec gdafb agbcfd gdcbef bgcad gfac gcb cdgabef | cg cg fdcagb cbg
+fbegcd cbd adcefb dageb afcb bc aefdc ecdab fgdeca fcdbega | efabcd cedba gadfec cb
+";
+    let segment = parser!(
+        s:char_of("abcdefg")+
+            => s.into_iter().map(|i| 1u8 << i).sum::<u8>()
+    );
+    let p = parser!(lines(
+        repeat_sep(segment, " ") " | " repeat_sep(segment, " ")
+    ));
+
+    assert_eq!(
+        p.parse(input).unwrap()[2],
+        (
+            vec![
+                0b1111011, 0b1000100, 0b0011111, 0b1101011, 0b1101111, 0b1111110, 0b1001111,
+                0b1100101, 0b1000110, 0b1111111
+            ],
+            vec![0b1000100, 0b1000100, 0b1101111, 0b1000110],
+        ),
+    );
+}
