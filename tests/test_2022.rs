@@ -471,6 +471,56 @@ Monkey 3:
 }
 
 #[test]
+fn day13() {
+    #[derive(Debug, PartialEq)]
+    enum Value {
+        Int(u32),
+        List(Vec<Value>),
+    }
+
+    let value = &parser!(
+        rule value: Value = {
+            n:u32 => Value::Int(n),
+            "[]" => Value::List(vec![]),
+            "[" vs:values "]" => Value::List(vs),
+        };
+        rule values: Vec<Value> = repeat_sep(value, ",");
+        value
+    );
+
+    let p = parser!(sections(line(value) line(value)));
+
+    let example = "\
+[1,1,3,1,1]
+[1,1,5,1,1]
+
+[[1],[2,3,4]]
+[[1],4]
+
+[9]
+[[8,7,6]]
+";
+
+    let i = Value::Int;
+
+    fn v(iter: impl IntoIterator<Item = Value>) -> Value {
+        Value::List(iter.into_iter().collect())
+    }
+
+    assert_eq!(
+        p.parse(example).unwrap(),
+        vec![
+            (
+                v([i(1), i(1), i(3), i(1), i(1)]),
+                v([i(1), i(1), i(5), i(1), i(1)]),
+            ),
+            (v([v([i(1)]), v([i(2), i(3), i(4)])]), v([v([i(1)]), i(4)])),
+            (v([i(9)]), v([v([i(8), i(7), i(6)])])),
+        ],
+    );
+}
+
+#[test]
 fn day15() {
     let input = "\
 Sensor at x=2, y=18: closest beacon is at x=-2, y=15

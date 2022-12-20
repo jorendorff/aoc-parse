@@ -35,6 +35,19 @@
 //! //      ^ERROR: quantifier `?` has to come after something
 //! ```
 //!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
+//! let p = parser! {
+//!     rule expr = {
+//!         t:term => t,
+//!         l:expr "+" r:term => l + r,
+//!     }
+//!     rule term = x:i64 => x;
+//!     // ^ERROR: missing semicolon before: rule term = x...
+//!     expr
+//! };
+//! ```
+//!
 //! This one is not something we can detect at macro-expand time,
 //! but the ambiguity in `ident ( )` between function call and concatenation
 //! is always resolved in favor of a function call, regardless of whether `ident`
@@ -49,7 +62,7 @@
 //! ```
 
 pub use crate::parsers::{
-    alt, empty, lines, map, opt, pair, plus, sequence, single_value, star,
+    alt, empty, lines, map, opt, pair, plus, sequence, single_value, star, RuleParser,
     RuleSetBuilder,
 };
 
@@ -416,15 +429,86 @@ macro_rules! aoc_parse_helper {
         $crate::aoc_parse_helper!(@list [,] [ $($seq)+ ] [ $( $out )? ])
     };
 
+    // aoc_parse_helper!(@rules [rules] (pattern))
+    //
+    // Called after @split_rules is done to translate a rule set into Rust code.
+
+    // With no rules, delegate to @seq.
+    (@rules [] ( $( $pattern:tt )* )) => {
+        $crate::parser!(@seq [ $( $pattern )* ] [] [])
+    };
+
+    (@rules
+        [ $( [ rule $name:ident : $output_ty:ty = $( $rule_pat:tt )* ] )+ ]
+        ( $( $pattern:tt )* )
+    ) => {
+        {
+            let mut builder = $crate::macros::RuleSetBuilder::new();
+            $(
+                let $name : $crate::macros::RuleParser<$output_ty> = builder.new_rule();
+            )*
+            $(
+                builder.assign_parser_for_rule(
+                    &$name,
+                    $crate::parser!(@seq [ $( $rule_pat )* ] [] [])
+                );
+            )*
+            builder.build($crate::parser!(@seq [ $( $pattern )* ] [] []))
+        }
+    };
+
+    // aoc_parse_helper!(@split_rules [source tokens] [] [])
+    //
+    // Split the source tokens into rules and a final pattern.
+    // Then call `aoc_parse_helper!(@rules [[rule]*] (pattern))`.
+    (@split_rules [ rule $( $tail:tt )* ] [] [ $( $out:tt )* ]) => {
+        $crate::aoc_parse_helper!(
+            @split_rules
+                [ $( $tail )* ]
+                [ rule ]
+                [ $( $out )* ]
+        )
+    };
+
+    (@split_rules [ $( $tail:tt )+ ] [] [ $( $out:tt )* ]) => {
+        $crate::aoc_parse_helper!(
+            @rules
+                [ $( $out )* ]
+                ( $( $tail )+ )
+        )
+    };
+
+    (@split_rules [ ; $( $tail:tt )* ] [ $( $rule:tt )* ] [ $( $out:tt )* ]) => {
+        $crate::aoc_parse_helper!(
+            @split_rules
+                [ $( $tail )* ]
+                []
+                [ $( $out )* [ $( $rule )* ] ]
+        )
+    };
+
+    (@split_rules [ rule $( $tail:tt )* ] [ $( $rule:tt )+ ] [ $( $out:tt )* ]) => {
+        ::core::compile_error!(stringify!(missing semicolon before: rule $($tail)*))
+    };
+
+    (@split_rules [ $other:tt $( $tail:tt )* ] [ $( $rule:tt )* ] [ $( $out:tt )* ]) => {
+        $crate::aoc_parse_helper!(
+            @split_rules
+                [ $( $tail )* ]
+                [ $( $rule )* $other ]
+                [ $( $out )* ]
+        )
+    };
+
     // aoc_parse_helper!(@...) - This is an internal error, shouldn't happen in the wild.
     (@ $($tail:tt)*) => {
         ::core::compile_error!(stringify!(unrecognized syntax @ $($tail)*))
     };
 
-    // Hand anything else off to the @seq submacro.
-    ($($tail:tt)*) => {
+    // Hand anything else off to the @split_rules submacro.
+    ( $( $tail:tt )* ) => {
         $crate::macros::single_value(
-            $crate::aoc_parse_helper!(@seq [ $($tail)* ] [ ] [ ])
+            $crate::aoc_parse_helper!(@split_rules [ $($tail)* ] [ ] [ ])
         )
     };
 }

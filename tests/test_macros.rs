@@ -290,3 +290,25 @@ f0w88yhf
         ),
     );
 }
+
+#[test]
+fn test_rule_set() {
+    let calc = parser!(
+        rule expr: i64 =
+            t:term a:addn* => t + a.into_iter().sum::<i64>();
+        rule addn: i64 = {
+            '+' t:term => t,
+            '-' t:term => -t,
+        };
+        rule term: i64 =
+            p:prim ops:('*' prim)* => p * ops.into_iter().product::<i64>();
+        rule prim: i64 = {
+            n:i64 => n,
+            '(' e:expr ')' => e,
+        };
+        expr
+    );
+
+    assert_parse_eq(&calc, "2+2", 4);
+    assert_parse_eq(&calc, "2+(3*(4+5+2))", 35);
+}
