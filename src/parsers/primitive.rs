@@ -53,7 +53,7 @@ macro_rules! regexes {
 regexes! {
     uint_regex = r"\A[0-9]+";
     int_regex = r"\A[+-]?[0-9]+";
-    bool_regex = r"true|false";
+    bool_regex = r"\A(?:true|false)";
     uint_bin_regex = r"\A[01]+";
     int_bin_regex = r"\A[+-]?[01]+";
     uint_hex_regex = r"\A[0-9A-Fa-f]+";
@@ -132,6 +132,16 @@ from_str_radix_parsers!(
 mod tests {
     use super::*;
     use crate::testing::*;
+
+    #[test]
+    fn test_bool() {
+        assert_parse_eq(bool, "true", true);
+        assert_parse_eq(bool, "false", false);
+        assert_no_parse(bool, "t");
+        assert_no_parse(bool, "");
+        assert_no_parse(bool, " true");
+        assert_no_parse(bool, "false ");
+    }
 
     #[test]
     fn test_parse_hex() {
