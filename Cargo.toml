@@ -1,6 +1,6 @@
 [package]
 name = "aoc-parse"
-version = "0.2.13"
+version = "0.2.14"
 edition = "2021"
 description = "A little library for parsing your Advent of Code puzzle input"
 repository = "https://github.com/jorendorff/aoc-parse"
