@@ -26,7 +26,7 @@ pub use primitive::{
     BasicParseIter,
 };
 pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
-pub use rule_set::{RuleSetBuilder, RuleParser, RuleSetParser};
+pub use rule_set::{RuleParser, RuleSetBuilder, RuleSetParser};
 pub use sequence::{pair, sequence, SequenceParser};
 pub use string::StringParser;
 

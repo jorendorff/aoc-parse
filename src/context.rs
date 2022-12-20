@@ -142,12 +142,23 @@ impl<'parse> ParseContext<'parse> {
         self.report(ParseError::new_extra(self.source(), location))
     }
 
-    pub(crate) fn register_rule_set(&mut self, rule_set_id: usize, rule_parsers: &'parse [Box<dyn Any>]) {
+    pub(crate) fn register_rule_set(
+        &mut self,
+        rule_set_id: usize,
+        rule_parsers: &'parse [Box<dyn Any>],
+    ) {
         self.rule_sets.insert(rule_set_id, rule_parsers);
     }
 
-    pub(crate) fn fetch_parser_for_rule(&self, rule_set_id: usize, index: usize) -> &'parse dyn Any {
-        let rule_parsers: &'parse [Box<dyn Any>] = self.rule_sets.get(&rule_set_id).expect("internal error: rule set not registered");
+    pub(crate) fn fetch_parser_for_rule(
+        &self,
+        rule_set_id: usize,
+        index: usize,
+    ) -> &'parse dyn Any {
+        let rule_parsers: &'parse [Box<dyn Any>] = self
+            .rule_sets
+            .get(&rule_set_id)
+            .expect("internal error: rule set not registered");
         &*rule_parsers[index]
     }
 }
