@@ -37,6 +37,12 @@
 //!
 //! ```compile_fail
 //! # use aoc_parse::{parser, prelude::*};
+//! let p = parser!(rule value: i64 = i64;);
+//! //      ^ERROR: missing final pattern
+//! ```
+//!
+//! ```compile_fail
+//! # use aoc_parse::{parser, prelude::*};
 //! let p = parser! {
 //!     rule expr = {
 //!         t:term => t,
@@ -498,6 +504,10 @@ macro_rules! aoc_parse_helper {
                 [ $( $rule )* $other ]
                 [ $( $out )* ]
         )
+    };
+
+    (@split_rules [] [] [ $( $out:tt )* ]) => {
+        ::core::compile_error!("missing final pattern (at the end of a rule set, specify which rule is the starting point for parsing)")
     };
 
     // aoc_parse_helper!(@...) - This is an internal error, shouldn't happen in the wild.
