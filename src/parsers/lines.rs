@@ -101,21 +101,19 @@ impl Region for Section {
 
 /// Match but don't convert; just return the ParseIter on success. Expects all
 /// of `source` to be matched, otherwise it's an error.
-fn match_fully<'parse, R, P>(parser: &'parse P, source: &'parse str) -> Result<P::Iter<'parse>>
+fn match_fully<'parse, R, P>(
+    context: &mut ParseContext<'parse>,
+    parser: &'parse P,
+) -> Result<P::Iter<'parse>, Reported>
 where
     R: Region,
     P: Parser,
 {
-    let mut context = ParseContext::new(source);
-    let mut iter = match parser.parse_iter(&mut context, 0) {
-        Ok(iter) => iter,
-        Err(Reported) => return Err(context.into_reported_error()),
-    };
+    let source = context.source();
+    let mut iter = parser.parse_iter(context, 0)?;
     while iter.match_end() != source.len() {
-        R::report_incomplete_match(&mut context, iter.match_end());
-        if iter.backtrack(&mut context).is_err() {
-            return Err(context.into_reported_error());
-        }
+        R::report_incomplete_match(context, iter.match_end());
+        iter.backtrack(context)?;
     }
     Ok(iter)
 }
@@ -146,10 +144,9 @@ where
         R::check_at_start(context, start)?;
         let (inner_end, outer_end) = R::find_end(context, start)?;
 
-        let source = context.source();
-        let iter = match_fully::<R, P>(&self.parser, &source[start..inner_end])
-            .map_err(|err| context.report(err.adjust_location(source, start)))?;
-
+        let iter = context.with_slice(start, inner_end, |inner_context| {
+            match_fully::<R, P>(inner_context, &self.parser)
+        })?;
         Ok(RegionParseIter { iter, outer_end })
     }
 }

@@ -96,6 +96,44 @@ impl<'parse> ParseContext<'parse> {
             .expect("a parse error should have been reported")
     }
 
+    /// Create a temporary child context for parsing a slice of `self.source`.
+    /// Invoke the given closure `f` with that temporary context. Propagate
+    /// errors to `self`.
+    ///
+    /// Rule sets registered while running `f` are retained in `self`.
+    /// They're cheap enough.
+    ///
+    /// The `'parse` lifetime of the nested context is the same as for `self`,
+    /// not narrower. That's the lifetime of `source`, which is the same for
+    /// the slice as for the whole.
+    pub(crate) fn with_slice<F, T>(
+        &mut self,
+        start: usize,
+        end: usize,
+        f: F
+    ) -> Result<T, Reported>
+    where
+        F: for <'a> FnOnce(&'a mut Self) -> Result<T, Reported>,
+    {
+        let mut inner_context = ParseContext {
+            source: &self.source[start..end],
+            foremost_error: None,
+            rule_sets: HashMap::new(),
+        };
+
+        std::mem::swap(&mut self.rule_sets, &mut inner_context.rule_sets);
+
+        let r = f(&mut inner_context);
+
+        std::mem::swap(&mut self.rule_sets, &mut inner_context.rule_sets);
+
+        if r.is_err() {
+            self.report(inner_context.into_reported_error()
+                        .adjust_location(self.source, start));
+        }
+        r
+    }
+
     /// Record an error.
     ///
     /// Currently a ParseContext only tracks the foremost error. That is, if
