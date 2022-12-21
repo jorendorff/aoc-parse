@@ -1,4 +1,5 @@
 mod chars;
+mod collections;
 mod dynamic;
 mod either;
 mod empty;
@@ -14,6 +15,7 @@ mod string;
 
 pub use self::regex::RegexParser;
 pub use chars::{alnum, alpha, any_char, char_of, digit, digit_bin, digit_hex, lower, upper};
+pub use collections::{btree_map, btree_set, hash_map, hash_set, vec_deque};
 pub use either::{alt, either, opt, AltParser, Either, EitherParser};
 pub use empty::{empty, EmptyParser};
 pub use lines::{line, lines, section, sections, LineParser, SectionParser};
@@ -60,34 +62,6 @@ mod tests {
         assert_parse_eq(p, "ok", Either::Right(()));
         assert_no_parse(p, "okc");
         assert_no_parse(p, "okok");
-
-        let p = star("a");
-        assert_parse_eq(p, "", vec![]);
-        assert_parse_eq(p, "a", vec![()]);
-        assert_parse_eq(p, "aa", vec![(), ()]);
-        assert_parse_eq(p, "aaa", vec![(), (), ()]);
-        assert_no_parse(p, "b");
-        assert_no_parse(p, "ab");
-        assert_no_parse(p, "ba");
-
-        let p = repeat_sep("cow", ",");
-        assert_parse_eq(p, "", vec![]);
-        assert_parse_eq(p, "cow", vec![()]);
-        assert_parse_eq(p, "cow,cow", vec![(), ()]);
-        assert_parse_eq(p, "cow,cow,cow", vec![(), (), ()]);
-        assert_no_parse(p, "cowcow");
-        assert_no_parse(p, "cow,");
-        assert_no_parse(p, "cow,,cow");
-        assert_no_parse(p, "cow,cow,");
-        assert_no_parse(p, ",");
-
-        let p = plus("a");
-        assert_no_parse(p, "");
-        assert_parse_eq(p, "a", vec![()]);
-        assert_parse_eq(p, "aa", vec![(), ()]);
-
-        let p = repeat_sep(usize, ",");
-        assert_parse_eq(p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
 
         assert_no_parse(&u8, "256");
 
