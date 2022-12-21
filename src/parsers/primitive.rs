@@ -60,6 +60,7 @@ regexes! {
     int_bin_regex = r"\A[+-]?[01]+";
     uint_hex_regex = r"\A[0-9A-Fa-f]+";
     int_hex_regex = r"\A[+-]?[0-9A-Fa-f]+";
+    float_regex = r"(?i)\A[+-]?(?:infinity|inf|nan|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[+-]?[0-9]+)?)";
 }
 
 // --- Parsers that use FromStr
@@ -81,6 +82,7 @@ macro_rules! from_str_parse_impl {
 
 from_str_parse_impl!(u8 u16 u32 u64 u128 usize, uint_regex);
 from_str_parse_impl!(i8 i16 i32 i64 i128 isize, int_regex);
+from_str_parse_impl!(f32 f64, float_regex);
 from_str_parse_impl!(bool, bool_regex);
 
 /// Parse a BigUint (using its `FromStr` implementation in the `num-bigint`
@@ -265,5 +267,23 @@ mod tests {
         assert_no_parse(big_uint_bin, "1001012");
         assert_no_parse(big_int_hex, "13A4G3");
         assert_no_parse(big_int_bin, "1001012");
+    }
+
+    #[test]
+    fn test_float() {
+        assert_parse_eq(f32, "1.25", 1.25_f32);
+        assert_parse_eq(f64, "-0", -0.0);
+        assert_parse_eq(f64, "-340282366.9209385e+30", -2.0f64.powi(128));
+        assert_parse_eq(f64, "+Infinity", f64::INFINITY);
+        assert_parse_eq(f32, ".375e9", 375_000_000.0);
+        assert_no_parse(f32, "infin");
+        assert_no_parse(f32, "-.");
+        assert_no_parse(f32, ".");
+        assert_no_parse(f32, "-");
+        assert_no_parse(f32, "+");
+        assert_no_parse(f32, "");
+        assert_no_parse(f64, "e12");
+        assert_no_parse(f64, "6.022e");
+        assert_no_parse(f64, "6.022e+");
     }
 }
