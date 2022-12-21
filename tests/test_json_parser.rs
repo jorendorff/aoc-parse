@@ -19,7 +19,7 @@ where
 
 #[test]
 fn test_rule_set_json() {
-    use serde_json::{Value, Number, Map};
+    use serde_json::{Map, Number, Value};
 
     let json = parser!(
         // https://www.rfc-editor.org/rfc/rfc8259#page-5
@@ -95,7 +95,7 @@ fn test_rule_set_json() {
                     "IDs": [116, 943, 234, 38793]
                 }
             }
-        )
+        ),
     );
 
     assert_parse_eq(
@@ -143,6 +143,6 @@ fn test_rule_set_json() {
                 "Zip":       "94085",
                 "Country":   "US"
             }
-        ])
+        ]),
     );
 }

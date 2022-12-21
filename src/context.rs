@@ -106,14 +106,9 @@ impl<'parse> ParseContext<'parse> {
     /// The `'parse` lifetime of the nested context is the same as for `self`,
     /// not narrower. That's the lifetime of `source`, which is the same for
     /// the slice as for the whole.
-    pub(crate) fn with_slice<F, T>(
-        &mut self,
-        start: usize,
-        end: usize,
-        f: F
-    ) -> Result<T, Reported>
+    pub(crate) fn with_slice<F, T>(&mut self, start: usize, end: usize, f: F) -> Result<T, Reported>
     where
-        F: for <'a> FnOnce(&'a mut Self) -> Result<T, Reported>,
+        F: for<'a> FnOnce(&'a mut Self) -> Result<T, Reported>,
     {
         let mut inner_context = ParseContext {
             source: &self.source[start..end],
@@ -128,8 +123,11 @@ impl<'parse> ParseContext<'parse> {
         std::mem::swap(&mut self.rule_sets, &mut inner_context.rule_sets);
 
         if r.is_err() {
-            self.report(inner_context.into_reported_error()
-                        .adjust_location(self.source, start));
+            self.report(
+                inner_context
+                    .into_reported_error()
+                    .adjust_location(self.source, start),
+            );
         }
         r
     }
