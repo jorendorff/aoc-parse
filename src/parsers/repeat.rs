@@ -254,3 +254,42 @@ pub fn plus<Pattern>(pattern: Pattern) -> RepeatParser<Pattern, EmptyParser> {
 pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Pattern, Sep> {
     repeat(pattern, sep, 0, None, false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::*;
+    use crate::parsers::usize;
+
+    #[test]
+    fn test_repeat_basics() {
+        let p = star("a");
+        assert_parse_eq(p, "", vec![]);
+        assert_parse_eq(p, "a", vec![()]);
+        assert_parse_eq(p, "aa", vec![(), ()]);
+        assert_parse_eq(p, "aaa", vec![(), (), ()]);
+        assert_no_parse(p, "b");
+        assert_no_parse(p, "ab");
+        assert_no_parse(p, "ba");
+
+        let p = repeat_sep("cow", ",");
+        assert_parse_eq(p, "", vec![]);
+        assert_parse_eq(p, "cow", vec![()]);
+        assert_parse_eq(p, "cow,cow", vec![(), ()]);
+        assert_parse_eq(p, "cow,cow,cow", vec![(), (), ()]);
+        assert_no_parse(p, "cowcow");
+        assert_no_parse(p, "cow,");
+        assert_no_parse(p, "cow,,cow");
+        assert_no_parse(p, "cow,cow,");
+        assert_no_parse(p, ",");
+
+        let p = plus("a");
+        assert_no_parse(p, "");
+        assert_parse_eq(p, "a", vec![()]);
+        assert_parse_eq(p, "aa", vec![(), ()]);
+
+        let p = repeat_sep(usize, ",");
+        assert_parse_eq(p, "11417,0,0,334", vec![11417usize, 0, 0, 334]);
+    }
+}
+
