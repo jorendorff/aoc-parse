@@ -453,15 +453,5 @@ pub mod prelude {
         u8, u8_bin, u8_hex, upper, usize, usize_bin, usize_hex, vec_deque,
     };
 
-    pub use crate::parsers::{line, lines, repeat_sep, section, sections};
-
-    /// Parse using `parser`, but instead of converting the matched text to a
-    /// Rust value, simply return it as a `String`.
-    ///
-    /// By default, `parser!(alpha+)` returns a `Vec<char>`, and sometimes that
-    /// is handy in AoC, but often it's better to have it return a `String`.
-    /// That can be done with `parser!(string(alpha+))`.
-    pub fn string<P: Parser>(parser: P) -> crate::parsers::StringParser<P> {
-        crate::parsers::StringParser { parser }
-    }
+    pub use crate::parsers::{line, lines, repeat_sep, section, sections, string};
 }
