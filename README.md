@@ -330,6 +330,41 @@ a different kind of data. You can parse this with
 <code>sections(<var>pattern</var>)</code> - Matches any number of sections matching *pattern*.
 Equivalent to <code>section(<var>pattern</var>)*</code>.
 
+### Collections
+
+<code>hash_set(<var>pattern</var>)</code>, <code>hash_map(<var>pattern</var>)</code>,
+<code>btree_set(<var>pattern</var>)</code>, <code>btree_map(<var>pattern</var>)</code>,
+<code>vec_deque(<var>pattern</var>)</code> - These match some text using *pattern*, then put
+the resulting values in a `HashSet` or other collection.
+
+The *pattern* must produce an [iterable](std::iter::IntoIterator) type. These functions work by
+calling `.into_iter()` on whatever *pattern* produces, then using `.collect()` to produce the
+new collection.
+
+The *pattern* itself needs a `*` or `+`, or something else that makes it match multiple values:
+
+```rust
+let p = parser!(hash_set(digit+));  // <-- note the `+`
+assert_eq!(p.parse("3127").unwrap(), HashSet::from([1, 2, 3, 7]));
+```
+
+A map is built from a sequence of pairs:
+
+```rust
+let p = parser!(hash_map(
+    lines(string(alpha+) ": " any_char)   // <-- this produces a vector of (String, char) pairs
+));
+
+assert_eq!(
+    p.parse("Midge: @\nToyler: #\nKnitley: &\n").unwrap(),
+    HashMap::from([
+        ("Midge".to_string(), '@'),
+        ("Toyler".to_string(), '#'),
+        ("Knitley".to_string(), '&'),
+    ]),
+);
+```
+
 ----
 
 Bringing it all together to parse a complex example:
