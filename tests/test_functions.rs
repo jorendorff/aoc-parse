@@ -15,6 +15,17 @@ where
     }
 }
 
+#[track_caller]
+fn assert_no_parse<P>(parser: P, s: &str)
+where
+    P: Parser,
+    P::Output: Debug,
+{
+    if let Ok(m) = parser.parse(s) {
+        panic!("expected no match, got: {:?}", m);
+    }
+}
+
 #[test]
 fn test_custom_parser_combinator() {
     // Users can actually kind of write their own combinators from scratch,
@@ -59,8 +70,65 @@ fn test_function_int_argument() {
 
     // pass a numeric literal to a function
     assert_parse_eq(parser!(player(2) ": " u64), "baby: 338", 338);
+    assert_parse_eq(
+        parser!(repeat_sep_n(u32, '/', 3)),
+        "12/21/2017",
+        vec![12, 21, 2017],
+    );
 
     // pass a variable to a function
     let active = 4;
     assert_parse_eq(parser!(player(active) ": " u64), "posh: 0", 0);
+    let num_fields = 3;
+    assert_parse_eq(
+        parser!(repeat_sep_n(u32, '/', num_fields)),
+        "12/21/2017",
+        vec![12, 21, 2017],
+    );
+}
+
+#[test]
+fn test_repeat_variants() {
+    assert_no_parse(parser!(repeat_n(digit, 5)), "1234");
+    assert_parse_eq(parser!(repeat_n(digit, 5)), "12345", vec![1, 2, 3, 4, 5]);
+    assert_no_parse(parser!(repeat_n(digit, 5)), "123456");
+
+    assert_parse_eq(
+        parser!(repeat_n(digit, 5) digit+),
+        "1234567",
+        (vec![1, 2, 3, 4, 5], vec![6, 7]),
+    );
+    assert_parse_eq(
+        parser!(string(repeat_n(digit, 5)) string(digit+)),
+        "1234567",
+        ("12345".to_string(), "67".to_string()),
+    );
+
+    let min5 = parser!(repeat_min(digit, 5));
+    assert_no_parse(min5, "1234");
+    assert_parse_eq(min5, "12345", vec![1, 2, 3, 4, 5]);
+    assert_parse_eq(min5, "123456", vec![1, 2, 3, 4, 5, 6]);
+    assert_parse_eq(parser!(repeat_min(digit, 0)), "", vec![]);
+    assert_parse_eq(parser!(repeat_min(digit, 0)), "12345", vec![1, 2, 3, 4, 5]);
+
+    let max5 = parser!(repeat_max(digit, 5));
+    assert_parse_eq(max5, "1234", vec![1, 2, 3, 4]);
+    assert_parse_eq(max5, "12345", vec![1, 2, 3, 4, 5]);
+    assert_no_parse(max5, "123456");
+    assert_parse_eq(parser!(repeat_max(digit, 0)), "", vec![]);
+    assert_no_parse(parser!(repeat_max(digit, 0)), "1");
+    assert_parse_eq(parser!(repeat_max(digit, 1)), "", vec![]);
+
+    let min5max7 = parser!(repeat_min_max(digit, 5, 7));
+    assert_no_parse(min5max7, "1234");
+    assert_parse_eq(min5max7, "12345", vec![1, 2, 3, 4, 5]);
+    assert_parse_eq(min5max7, "1234567", vec![1, 2, 3, 4, 5, 6, 7]);
+    assert_no_parse(min5max7, "12345678");
+}
+
+#[test]
+#[should_panic]
+fn test_invalid_repeat_min_max() {
+    // This panics because the minimum is greater than the maximum.
+    let _p = parser!(repeat_min_max(digit, 5, 4));
 }

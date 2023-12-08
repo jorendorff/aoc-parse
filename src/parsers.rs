@@ -27,7 +27,10 @@ pub use primitive::{
     u32, u32_bin, u32_hex, u64, u64_bin, u64_hex, u8, u8_bin, u8_hex, usize, usize_bin, usize_hex,
     BasicParseIter,
 };
-pub use repeat::{plus, repeat, repeat_sep, star, RepeatParser};
+pub use repeat::{
+    plus, repeat_max, repeat_min, repeat_min_max, repeat_n, repeat_sep, repeat_sep_max,
+    repeat_sep_min, repeat_sep_min_max, repeat_sep_n, star, RepeatParser,
+};
 pub use rule_set::{RuleParser, RuleSetBuilder, RuleSetParser};
 pub use sequence::{pair, sequence, SequenceParser};
 pub use string::{string, StringParser};
