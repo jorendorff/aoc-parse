@@ -107,7 +107,8 @@ where
     P: Parser,
     P::Output: IntoIterator<Item = V>,
 {
-    // NOTE: this is inefficient; a mapping that uses `Into` would be much faster.
+    // NOTE: A mapping that uses `Into` might be faster, but I'm not sure. The standard library has
+    // some specializations to do iterator-based colletion operations like this in-place.
     MapParser {
         inner: parser,
         mapper: Collect::default(),
