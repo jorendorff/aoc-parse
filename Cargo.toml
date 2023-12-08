@@ -1,12 +1,12 @@
 [package]
 name = "aoc-parse"
-version = "0.2.17"
+version = "0.2.18"
 edition = "2021"
 description = "A little library for parsing your Advent of Code puzzle input"
 repository = "https://github.com/jorendorff/aoc-parse"
 homepage = "https://github.com/jorendorff/aoc-parse/#aoc-parse"
 license = "MIT"
-keywords = ["aoc", "parse", "puzzle", "parser", "advent"]
+keywords = ["aoc", "parse", "parser", "adventofcode", "advent-of-code"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
