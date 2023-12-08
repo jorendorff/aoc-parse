@@ -16,8 +16,7 @@ For example, my puzzle input for [December 2, 2015][example] looked like this:
 ...
 ```
 
-The parser for this format is a one-liner:
-`parser!(lines(u64 "x" u64 "x" u64))`.
+The parser for this format is a one-liner: `parser!(lines(u64 "x" u64 "x" u64))`.
 
 ## How to use aoc-parse
 
@@ -48,9 +47,8 @@ fn parse_input(text: &str) -> Vec<(u64, u64, u64)> {
 
 ## Patterns
 
-The argument you need to pass to the `parser!` macro is a *pattern*;
-all aoc-parse does is **match** strings against your chosen pattern
-and **convert** them into Rust values.
+The argument you need to pass to the `parser!` macro is a *pattern*; all aoc-parse does is
+**match** strings against your chosen pattern and **convert** them into Rust values.
 
 Here are some examples of patterns:
 
@@ -72,51 +70,45 @@ Here are the pieces that you can use in a pattern:
 
 ### Basic patterns
 
-`i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `big_int` - These match an integer,
-written out using decimal digits, with an optional `+` or `-` sign
-at the start, like `0` or `-11474`.
+`i8`, `i16`, `i32`, `i64`, `i128`, `isize`, `big_int` - These match an integer, written out
+using decimal digits, with an optional `+` or `-` sign at the start, like `0` or `-11474`.
 
-It's an error if the string contains a number too big to fit in the
-type you chose. For example, `parser!(i8).parse("1000")` is an error.
-(It matches the string, but fails during the "convert" phase.)
+It's an error if the string contains a number too big to fit in the type you chose. For
+example, `parser!(i8).parse("1000")` is an error. (It matches the string, but fails during the
+"convert" phase.)
 
 `big_int` parses a [`num_bigint::BigInt`].
 
-`u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `big_uint` - The same, but
-without the sign.
+`u8`, `u16`, `u32`, `u64`, `u128`, `usize`, `big_uint` - The same, but without the sign.
 
 `i8_bin`, `i16_bin`, `i32_bin`, `i64_bin`, `i128_bin`, `isize_bin`, `big_int_bin`,
 `u8_bin`, `u16_bin`, `u32_bin`, `u64_bin`, `u128_bin`, `usize_bin`, `big_uint_bin`,
 `i8_hex`, `i16_hex`, `i32_hex`, `i64_hex`, `i128_hex`, `isize_hex`, `big_int_hex`,
 `u8_hex`, `u16_hex`, `u32_hex`, `u64_hex`, `u128_hex`, `usize_hex`, `big_uint_hex` -
-Match an integer in base 2 or base 16. The `_hex` parsers allow both
-uppercase and lowercase digits `A`-`F`.
+Match an integer in base 2 or base 16. The `_hex` parsers allow both uppercase and lowercase
+digits `A`-`F`.
 
-`f32` ,`f64` - These match a floating-point number written out using
-decimal digits, in [this
-format](https://doc.rust-lang.org/std/primitive.f64.html#impl-FromStr-for-f64).
-(No Advent of Code puzzle has ever hinged on floating-point numbers,
-but it doesn't hurt to be prepared.)
+`f32` ,`f64` - These match a floating-point number written out using decimal digits, in [this
+format](https://doc.rust-lang.org/std/primitive.f64.html#impl-FromStr-for-f64). (No Advent of
+Code puzzle has ever hinged on floating-point numbers, but it doesn't hurt to be prepared.)
 
-`bool` - Matches either `true` or `false` and converts it to the
-corresponding `bool` value.
+`bool` - Matches either `true` or `false` and converts it to the corresponding `bool` value.
 
-`'x'` or `"hello"` - A Rust character or string, in quotes, is a pattern
-that matches that exact text only.
+`'x'` or `"hello"` - A Rust character or string, in quotes, is a pattern that matches that
+exact text only.
 
 Exact patterns don't produce a value.
 
-<code><var>pattern1 pattern2 pattern3</var>...</code> - Patterns can be
-concatenated to form larger patterns. This is how
-`parser!(u64 "x" u64 "x" u64)` matches the string `4x23x21`. It simply
-matches each subpattern in order. It converts the match to a tuple if
-there are two or more subpatterns that produce values.
+<code><var>pattern1 pattern2 pattern3</var>...</code> - Patterns can be concatenated to form
+larger patterns. This is how `parser!(u64 "x" u64 "x" u64)` matches the string `4x23x21`. It
+simply matches each subpattern in order. It converts the match to a tuple if there are two or
+more subpatterns that produce values.
 
-<code><var>parser_var</var></code> - You can use previously defined
-parsers that you've stored in local variables.
+<code><var>parser_var</var></code> - You can use previously defined parsers that you've stored
+in local variables.
 
-For example, the `amount` parser below makes use of the `fraction` parser
-defined on the previous line.
+For example, the `amount` parser below makes use of the `fraction` parser defined on the
+previous line.
 
 ```rust
 let fraction = parser!(i64 "/" u64);
@@ -149,41 +141,36 @@ not converted.
 
 ### Matching single characters
 
-`alpha`, `alnum`, `upper`, `lower` - Match single characters of
-various categories. (These use the Unicode categories, even though
-Advent of Code historically sticks to ASCII.)
+`alpha`, `alnum`, `upper`, `lower` - Match single characters of various categories. (These use
+the Unicode categories, even though Advent of Code historically sticks to ASCII.)
 
-`digit`, `digit_bin`, `digit_hex` - Match a single ASCII character
-that's a digit in base 10, base 2, or base 16, respectively.
-The digit is converted to its numeric value, as a `usize`.
+`digit`, `digit_bin`, `digit_hex` - Match a single ASCII character that's a digit in base 10,
+base 2, or base 16, respectively. The digit is converted to its numeric value, as a `usize`.
 
-`any_char` - Match the next character, no matter what it is (like `.`
-in a regular expression, except that `any_char` matches newline
-characters too).
+`any_char` - Match the next character, no matter what it is (like `.` in a regular expression,
+except that `any_char` matches newline characters too).
 
-<code>char_of(<var>str</var>)</code> - Match the next character if it's
-one of the characters in *str*. For example, `char_of(">^<v")` matches
-exactly one character, either `>`, `^`, `<`, or `v`. Returns the index
-of the character within the list of options (in this case, `0`, `1`,
+<code>char_of(<var>str</var>)</code> - Match the next character if it's one of the characters
+in *str*. For example, `char_of(">^<v")` matches exactly one character, either `>`, `^`, `<`,
+or `v`. Returns the index of the character within the list of options (in this case, `0`, `1`,
 `2`, or `3`).
 
 ### Matching multiple characters
 
-<code>string(<var>pattern</var>)</code> - Matches the given *pattern*,
-but instead of converting it to some value, simply return the matched
-characters as a `String`.
+<code>string(<var>pattern</var>)</code> - Matches the given *pattern*, but instead of
+converting it to some value, simply return the matched characters as a `String`.
 
-By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy
-in AoC, but often it's better to have it return a `String`.
+By default, `alpha+` returns a `Vec<char>`, and sometimes that is handy in AoC, but often it's
+better to have it return a `String`.
 
 ### Custom conversion
 
-<code>... <var>name1</var>:<var>pattern1</var> ... => <var>expr</var></code> -
-On successfully matching the patterns to the left of `=>`, evaluate the Rust
-expression *expr* to convert the results to a single Rust value.
+<code>... <var>name1</var>:<var>pattern1</var> ... => <var>expr</var></code> - On successfully
+matching the patterns to the left of `=>`, evaluate the Rust expression *expr* to convert the
+results to a single Rust value.
 
-Use this to convert input to structs. For instance, suppose your puzzle input
-contains each elf's name and height:
+Use this to convert input to structs. For instance, suppose your puzzle input contains each
+elf's name and height:
 
 ```
 Holly=33
@@ -191,8 +178,7 @@ Ivy=7
 DouglasFir=1093
 ```
 
-and you'd like to turn this into a vector of `struct Elf` values. The
-code you need is:
+and you'd like to turn this into a vector of `struct Elf` values. The code you need is:
 
 ```rust
 struct Elf {
@@ -205,28 +191,25 @@ let p = parser!(lines(
 ));
 ```
 
-The name `elf` applies to the pattern `string(alpha+)` and the name
-`ht` applies to the pattern `i32`. The bit after the `=>` is
-plain old Rust code.
+The name `elf` applies to the pattern `string(alpha+)` and the name `ht` applies to the pattern
+`i32`. The bit after the `=>` is plain old Rust code.
 
-The *name*s are in scope only for the following *expr* in the same
-set of matching parentheses or braces.
+The *name*s are in scope only for the following *expr* in the same set of matching parentheses
+or braces.
 
 ### Alternatives
 
-<code>{<var>pattern1</var>, <var>pattern2</var>, ...}</code> -
-Matches any one of the *patterns*. First try matching *pattern1*; if it
-matches, stop. If not, try *pattern2*, and so on. All the patterns must
-produce the same type of Rust value.
+<code>{<var>pattern1</var>, <var>pattern2</var>, ...}</code> - Matches any one of the
+*patterns*. First try matching *pattern1*; if it matches, stop. If not, try *pattern2*, and so
+on. All the patterns must produce the same type of Rust value.
 
 This is sort of like a Rust `match` expression.
 
-For example, `parser!({"<" => -1, ">" => 1})` either matches `<`,
-returning the value `-1`, or matches `>`, returing `1`.
+For example, `parser!({"<" => -1, ">" => 1})` either matches `<`, returning the value `-1`, or
+matches `>`, returing `1`.
 
-Alternatives are handy when you want to convert the input into an enum.
-For example, my puzzle input for December 23, 2015 was a list of instructions
-that looked (in part) like this:
+Alternatives are handy when you want to convert the input into an enum. For example, my puzzle
+input for December 23, 2015 was a list of instructions that looked (in part) like this:
 
 ```
 jie a, +4
@@ -270,10 +253,10 @@ let p = parser!(lines({
 
 ### Rule sets
 
-<code>rule <var>name1</var>: <var>type1</var> = <var>pattern1</var>;</code> -
-Introduce a "rule", a named subparser.
+<code>rule <var>name1</var>: <var>type1</var> = <var>pattern1</var>;</code> - Introduce a
+"rule", a named subparser.
 
-This supports parsing text with nesting brackets.
+This supports parsing text with nesting parentheses or brackets.
 
 ```rust
 enum Formation {
@@ -302,37 +285,31 @@ assert!(p.parse("px(fo(i)(RR(c)))j(Q)zww\n").is_ok());
 assert!(p.parse("x(fo))\n").is_err());  // parens not balanced
 ```
 
-Ordinarily `let` suffices for parsers used by other parsers; but `rule`
-is needed for parsers that refer to themselves or to each other,
-cyclically, like `formation` and `stack` above. Rust's `let` doesn't
-support that.
+Ordinarily `let` suffices for parsers used by other parsers; but `rule` is needed for parsers
+that refer to themselves or to each other, cyclically, like `formation` and `stack` above.
+Rust's `let` doesn't support that.
 
 Note: Left-recursive grammars don't work, as usual for PEG parsers.
 
 ### Lines and sections
 
-<code>line(<var>pattern</var>)</code> - Matches a single line of text that
-matches *pattern*, and the newline at the end of the line.
+<code>line(<var>pattern</var>)</code> - Matches a single line of text that matches *pattern*,
+and the newline at the end of the line.
 
-This is like <code>^<var>pattern</var>\n</code> in regular expressions,
-with two minor differences:
+This is like <code>^<var>pattern</var>\n</code> in regular expressions, with two minor
+differences:
 
--   <code>line(<var>pattern</var>)</code> will only ever match exactly
-    one line of text, even if *pattern* could match more newlines.
+-   <code>line(<var>pattern</var>)</code> will only ever match exactly one line of text, even
+    if *pattern* could match more newlines.
 
--   If your input does not end with a newline,
-    <code>line(<var<pattern</var>)</code> can still match the
-    non-newline-terminated "line" at the end.
+-   If your input does not end with a newline, <code>line(<var<pattern</var>)</code> can still
+    match the non-newline-terminated "line" at the end.
 
-`line(string(any_char+))` matches a line of text, strips off the newline
-character, and returns the rest as a `String`.
+`line(string(any_char+))` matches a line of text, strips off the newline character, and returns
+the rest as a `String`. `line("")` matches a blank line.
 
-`line("")` matches a blank line.
-
-<code>lines(<var>pattern</var>)</code> - Matches any number of lines of
-text matching *pattern*. Each line must be terminated by a newline, `'\n'`.
-
-Equivalent to <code>line(<var>pattern</var>)*</code>.
+<code>lines(<var>pattern</var>)</code> - Matches any number of lines of text matching
+*pattern*. Equivalent to <code>line(<var>pattern</var>)*</code>.
 
 ```rust
 let p = parser!(lines(repeat_sep(digit, " ")));
@@ -342,20 +319,16 @@ assert_eq!(
 );
 ```
 
-<code>section(<var>pattern</var>)</code> - Matches zero or more nonblank lines,
-followed by either a blank line or the end of input. The nonblank lines must match
-*pattern*.
-
-`section()` consumes the blank line. *pattern* should not expect to see it.
-
-It's common for an AoC puzzle input to have several lines of data, then
-a blank line, and then a different kind of data. You can parse this with
-<code>section(<var>p1</var>) section(<var>p2</var>)</code>.
-
+<code>section(<var>pattern</var>)</code> - Matches zero or more nonblank lines, followed by
+either a blank line or the end of input. The nonblank lines must match *pattern*. For example,
 `section(lines(u64))` matches a section that's a list of numbers, one per line.
 
-<code>sections(<var>pattern</var>)</code> - Matches any number of sections
-matching *pattern*. Equivalent to <code>section(<var>pattern</var>)*</code>
+It's common for an AoC puzzle input to have several lines of data, then a blank line, and then
+a different kind of data. You can parse this with <code>section(<var>p1</var>)
+section(<var>p2</var>)</code>.
+
+<code>sections(<var>pattern</var>)</code> - Matches any number of sections matching *pattern*.
+Equivalent to <code>section(<var>pattern</var>)*</code>.
 
 ----
 
