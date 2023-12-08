@@ -324,8 +324,8 @@ either a blank line or the end of input. The nonblank lines must match *pattern*
 `section(lines(u64))` matches a section that's a list of numbers, one per line.
 
 It's common for an AoC puzzle input to have several lines of data, then a blank line, and then
-a different kind of data. You can parse this with <code>section(<var>p1</var>)
-section(<var>p2</var>)</code>.
+a different kind of data. You can parse this with
+<code>section(<var>p1</var>) section(<var>p2</var>)</code>.
 
 <code>sections(<var>pattern</var>)</code> - Matches any number of sections matching *pattern*.
 Equivalent to <code>section(<var>pattern</var>)*</code>.
