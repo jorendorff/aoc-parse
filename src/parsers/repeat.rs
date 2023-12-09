@@ -255,6 +255,102 @@ pub fn repeat_sep<Pattern, Sep>(pattern: Pattern, sep: Sep) -> RepeatParser<Patt
     repeat(pattern, sep, 0, None, false)
 }
 
+/// <code>repeat_n(<var>pattern</var>, <var>n</var>)</code> matches the given *pattern* exactly *n*
+/// times, with no separator.
+///
+/// Each match is converted to a Rust value, producing a `Vec`.
+pub fn repeat_n<Pattern>(pattern: Pattern, n: usize) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), n, Some(n), false)
+}
+
+/// <code>repeat_min(<var>pattern</var>, <var>min</var>)</code> matches the given *pattern*
+/// repeated *min* or more times, with no separator.
+///
+/// Each match is converted to a Rust value, producing a `Vec`.
+pub fn repeat_min<Pattern>(pattern: Pattern, min: usize) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), min, None, false)
+}
+
+/// <code>repeat_max(<var>pattern</var>, <var>max</var>)</code> matches the given *pattern*
+/// repeated up to *max* times, with no separator.
+///
+/// Each match is converted to a Rust value, producing a `Vec`.
+pub fn repeat_max<Pattern>(pattern: Pattern, max: usize) -> RepeatParser<Pattern, EmptyParser> {
+    repeat(pattern, empty(), 0, Some(max), false)
+}
+
+/// <code>repeat_min_max(<var>pattern</var>, <var>min</var>, <var>max</var>)</code> matches the
+/// given *pattern* repeated at least *min* times, and up to *max* times, with no separator.
+///
+/// Each match is converted to a Rust value, producing a `Vec`.
+///
+/// # Panics
+///
+/// If `min > max`.
+pub fn repeat_min_max<Pattern>(
+    pattern: Pattern,
+    min: usize,
+    max: usize,
+) -> RepeatParser<Pattern, EmptyParser> {
+    assert!(min <= max);
+    repeat(pattern, empty(), min, Some(max), false)
+}
+
+/// <code>repeat_sep_n(<var>pattern</var>, <var>sep</var>, <var>n</var>)</code> matches the
+/// given *pattern* repeated exactly *n* times, separated by the *separator*.
+///
+/// The bits that match *pattern* are converted to Rust values, producing a `Vec`.
+/// Parts of the string matched by *separator* are not converted.
+pub fn repeat_sep_n<Pattern, Sep>(pattern: Pattern, sep: Sep, n: usize) -> RepeatParser<Pattern, Sep> {
+    repeat(pattern, sep, n, Some(n), false)
+}
+
+/// <code>repeat_sep_min(<var>pattern</var>, <var>sep</var>, <var>min</var>)</code> matches the
+/// given *pattern* repeated at least *min* times, separated by the *separator*.
+///
+/// The bits that match *pattern* are converted to Rust values, producing a `Vec`.
+/// Parts of the string matched by *separator* are not converted.
+pub fn repeat_sep_min<Pattern, Sep>(
+    pattern: Pattern,
+    sep: Sep,
+    min: usize,
+) -> RepeatParser<Pattern, Sep> {
+    repeat(pattern, sep, min, None, false)
+}
+
+/// <code>repeat_sep_max(<var>pattern</var>, <var>sep</var>, <var>max</var>)</code> matches the
+/// given *pattern* repeated up to *max* times, separated by the *separator*.
+///
+/// The bits that match *pattern* are converted to Rust values, producing a `Vec`.
+/// Parts of the string matched by *separator* are not converted.
+pub fn repeat_sep_max<Pattern, Sep>(
+    pattern: Pattern,
+    sep: Sep,
+    max: usize,
+) -> RepeatParser<Pattern, Sep> {
+    repeat(pattern, sep, 0, Some(max), false)
+}
+
+/// <code>repeat_sep_min_max(<var>pattern</var>, <var>sep</var>, <var>min</var>,
+/// <var>max</var>)</code> matches the given *pattern* repeated at least *min* times, and up to
+/// *max* times, separated by the *separator*.
+///
+/// The bits that match *pattern* are converted to Rust values, producing a `Vec`.
+/// Parts of the string matched by *separator* are not converted.
+///
+/// # Panics
+///
+/// If `min > max`.
+pub fn repeat_sep_min_max<Pattern, Sep>(
+    pattern: Pattern,
+    sep: Sep,
+    min: usize,
+    max: usize,
+) -> RepeatParser<Pattern, Sep> {
+    assert!(min <= max);
+    repeat(pattern, sep, min, Some(max), false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -139,6 +139,21 @@ any number of times, separated by the *separator*. This converts only the bits t
 *pattern* to Rust values, producing a `Vec`. Any parts of the string matched by *separator* are
 not converted.
 
+<code>repeat_n(<var>pattern</var>, <var>n</var>)</code>,
+<code>repeat_min(<var>pattern</var>, <var>min</var>)</code>,
+<code>repeat_max(<var>pattern</var>, <var>max</var>)</code>,
+<code>repeat_min_max(<var>pattern</var>, <var>min</var>, <var>max</var>)</code> -
+Match the given *pattern* repeated the specified number of times, with no separator, producing
+a `Vec`.
+
+<code>repeat_sep_n(<var>pattern</var>, <var>sep</var>, <var>n</var>)</code>,
+<code>repeat_sep_min(<var>pattern</var>, <var>sep</var>, <var>min</var>)</code>,
+<code>repeat_sep_max(<var>pattern</var>, <var>sep</var>, <var>max</var>)</code>,
+<code>repeat_sep_min_max(<var>pattern</var>, <var>sep</var>, <var>min</var>, <var>max</var>)</code> -
+Match the given *pattern* repeated the specified number of times, separated by the *separator*.
+Like `repeat_sep`, these functions convert the text matching *pattern* and discard the text
+matched by *separator*. Produces a `Vec`.
+
 ### Matching single characters
 
 `alpha`, `alnum`, `upper`, `lower` - Match single characters of various categories. (These use
@@ -206,7 +221,7 @@ on. All the patterns must produce the same type of Rust value.
 This is sort of like a Rust `match` expression.
 
 For example, `parser!({"<" => -1, ">" => 1})` either matches `<`, returning the value `-1`, or
-matches `>`, returing `1`.
+matches `>`, returning `1`.
 
 Alternatives are handy when you want to convert the input into an enum. For example, my puzzle
 input for December 23, 2015 was a list of instructions that looked (in part) like this:
