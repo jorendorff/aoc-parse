@@ -311,11 +311,11 @@
 //! -   <code>line(<var>pattern</var>)</code> will only ever match exactly one line of text, even
 //!     if *pattern* could match more newlines.
 //!
-//! -   If your input does not end with a newline, <code>line(<var<pattern</var>)</code> can still
+//! -   If your input does not end with a newline, <code>line(<var>pattern</var>)</code> can still
 //!     match the non-newline-terminated "line" at the end.
 //!
-//! `line(string(any_char+))` matches a line of text, strips off the newline character, and returns
-//! the rest as a `String`. `line("")` matches a blank line.
+//! So `line(string(any_char+))` matches a line of text, strips off the newline character, and
+//! returns the rest as a `String`. `line("")` matches a blank line.
 //!
 //! <code>lines(<var>pattern</var>)</code> - Matches any number of lines of text matching
 //! *pattern*. Equivalent to <code>line(<var>pattern</var>)*</code>.
